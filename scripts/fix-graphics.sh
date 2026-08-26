@@ -10,12 +10,13 @@ log_info() { echo "[INFO] $*"; }
 log_success() { echo "[OK] $*"; }
 
 log_section "Graphics Fix for chell (HD515 i915)"
-echo "Current: $(cat /proc/cmdline | tr ' ' '\n' | grep -E 'nomodeset|quiet' || true)"
-echo "GRUB: $(grep GRUB_CMDLINE_LINUX_DEFAULT /etc/default/grub 2>&1 | head -1)"
-echo "Driver now: $(readlink /sys/class/drm/card0/device/driver 2>&1 | xargs basename 2>/dev/null || echo none)"
+echo "Current cmdline: $(cat /proc/cmdline | tr ' ' '\n' | grep -E 'nomodeset|quiet' || true)"
+echo "GRUB file: $(grep GRUB_CMDLINE_LINUX_DEFAULT /etc/default/grub 2>&1 | head -1)"
+echo "Driver now: $(readlink /sys/class/drm/card*/device/driver 2>&1 | head -1 | xargs basename 2>/dev/null || echo none) (card* glob, i915=card1, simpledrm=card0)"
 lsmod | grep -E "i915|simpledrm" || echo "no i915/simpledrm in lsmod"
+echo "Check both sources: /proc/cmdline + /etc/default/grub"
 
-if grep -q "nomodeset" /proc/cmdline; then
+if grep -q "nomodeset" /proc/cmdline || grep -q "nomodeset" /etc/default/grub; then
   log_info "nomodeset detected - removing from /etc/default/grub"
   sudo cp /etc/default/grub /etc/default/grub.bak.$(date +%Y%m%d)
   sudo sed -i 's/ *nomodeset//g' /etc/default/grub
