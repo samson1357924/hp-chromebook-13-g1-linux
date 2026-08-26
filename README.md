@@ -42,7 +42,7 @@ This project provides a complete Linux hardware enablement plan for the **HP Chr
 | **Fingerprint** | ⛔ **N/A** | — | HP 13 G1 has no fingerprint sensor (unlike c640). Module removed. |
 | **SD Reader** | 🟢 **Working** | `sdhci` `9d2b` + JMS567 | microSD via `00:1e.4`, external SSD via `152d:0562` OK. |
 
-> Detailed `COMPATIBILITY.md` lists Skylake vs Comet Lake differences. `VERIFICATION.md` marks tested vs untested on this physical `chell/m7-6Y75` unit.
+> Detailed `COMPATIBILITY.md` lists Skylake vs Skylake differences. `VERIFICATION.md` marks tested vs untested on this physical `chell/m7-6Y75` unit.
 
 ---
 
@@ -84,7 +84,7 @@ chmod +x setup.sh
 ### Deep Dive (ported from c640)
 
 * 🔊 **AVS Audio vs SOF**: Chell uses `snd_soc_avs` (SSM4567/NAU8825) not SOF; PipeWire routing differences
-* 🔋 **Power & Suspend**: S3 `deep` on Skylake vs S0ix on Comet Lake
+* 🔋 **Power & Suspend**: S3 `deep` on Skylake vs S0ix on Skylake
 
 ### Distro Guides
 

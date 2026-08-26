@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
-# scripts/check-s0ix.sh - Automated S0ix Modern Standby & Package C-State Diagnostics for HP Pro c640
+# scripts/check-s0ix.sh - Automated S0ix Modern Standby & Package C-State Diagnostics for HP Chromebook 13 G1
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -11,7 +11,7 @@ source "$ROOT_DIR/lib/logger.sh"
 # shellcheck source=lib/syscheck.sh
 source "$ROOT_DIR/lib/syscheck.sh"
 
-log_section "HP Pro c640 S0ix (s2idle) Modern Standby Diagnostic"
+log_section "HP Chromebook 13 G1 S0ix (s2idle) Modern Standby Diagnostic"
 check_dmi_board || true
 
 # 1. Check mem_sleep mode

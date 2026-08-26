@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
-# lib/logger.sh - Structured Terminal & File Logger for HP Pro c640 Linux Enablement
+# lib/logger.sh - Structured Terminal & File Logger for HP Chromebook 13 G1 Linux Enablement
 
 # Avoid multiple inclusions
 if [ -n "${_LIB_LOGGER_SH_LOADED:-}" ]; then

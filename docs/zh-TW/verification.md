@@ -2,7 +2,7 @@
 
 # ✅ 實測驗證矩陣 (Verification Matrix)
 
-> **誠實狀態聲明**：本文件清楚區分**已在真實 HP Pro c640 上實測**的項目
+> **誠實狀態聲明**：本文件清楚區分**已在真實 HP Chromebook 13 G1 上實測**的項目
 > （附上精確軟體版本），以及**僅提供設定檔、尚未驗證**的項目。README 與
 > [COMPATIBILITY.md](COMPATIBILITY.md) 中若宣稱了下方證據無法背書的內容，
 > 應視為未實測。
@@ -13,7 +13,7 @@
 
 | 項目 | 數值 |
 | :--- | :--- |
-| **裝置** | HP Pro c640 Chromebook (board: `dratini` / baseboard: `hatch`) |
+| **裝置** | HP Chromebook 13 G1 (board: `chell` / baseboard: `hatch`) |
 | **BIOS / 韌體** | MrChromebox UEFI Full ROM，版本 `2606.1` |
 | **作業系統** | Ubuntu 26.04 LTS (Resolute Raccoon)，x86_64 |
 | **核心** | `7.0.0-29-generic` (Ubuntu 7.0.0-29.29，2026-07-17 建置) |
@@ -67,8 +67,8 @@
 
 | 檢查項目 | 結果 | 證據 |
 | :--- | :---: | :--- |
-| Wi-Fi 6 AX201 | ⚠️ | 📄 `hardware/lspci.txt`：`iwlwifi` 於 `00:14.3` — **裝置存在，連線/吞吐量未量測** |
-| 藍牙 AX201 | ⚠️ | 📄 `hardware/lsusb.txt`：`btusb` — Intel `8087:0026` — **裝置存在，配對/音訊未量測** |
+|  Wi-Fi 5 7265 | ⚠️ | 📄 `hardware/lspci.txt`：`iwlwifi` 於 `00:14.3` — **裝置存在，連線/吞吐量未量測** |
+| 藍牙 7265 | ⚠️ | 📄 `hardware/lsusb.txt`：`btusb` — Intel `8087:0026` — **裝置存在，配對/音訊未量測** |
 | 視訊鏡頭 | ⚠️ | 📄 `hardware/lsusb.txt`：`uvcvideo` — Foxlink `05c8:03e1` — **裝置存在，影像擷取未測試** |
 | SD / SATA | ⚠️ | 📄 `hardware/lspci.txt`：`sdhci-pci` x2、`ahci` — **裝置存在，I/O 未測試** |
 | WPA3 / Wi-Fi 吞吐量 | ❌ | **未量測**（證據包內無網路層測試） |
@@ -154,4 +154,4 @@ cat /sys/power/mem_sleep
   通訊已實機驗證；打包迭代 2 `1.94.10-2` 中繼資料已備妥，驅動原始碼未異動）
 * **OS / 核心**：Ubuntu 26.04 LTS，`7.0.0-29-generic`
 * **韌體**：MrChromebox `2606.1`
-* **硬體**：HP Pro c640 Chromebook（`dratini`/`hatch`）
+* **硬體**：HP Chromebook 13 G1（`chell`/`hatch`）

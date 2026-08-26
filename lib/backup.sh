@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
-# lib/backup.sh - File Backup, Manifest Tracking and Rollback/Uninstall for HP Pro c640 Linux Enablement
+# lib/backup.sh - File Backup, Manifest Tracking and Rollback/Uninstall for HP Chromebook 13 G1 Linux Enablement
 
 if [ -n "${_LIB_BACKUP_SH_LOADED:-}" ]; then
     return 0

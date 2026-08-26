@@ -1,7 +1,7 @@
 # 🔧 Firmware Flashing & Recovery Guide
 
 This guide explains in detail how to flash **MrChromebox UEFI Full ROM**
-firmware onto your **HP Pro c640 Chromebook (Google `dratini`)** to install
+firmware onto your **HP Chromebook 13 G1 (Google `chell`)** to install
 native Linux, and how to fully restore the original factory ChromeOS later.
 
 ---
@@ -10,7 +10,7 @@ native Linux, and how to fully restore the original factory ChromeOS later.
 
 > [!IMPORTANT]
 >
-> 1. **The HP Pro c640 has no physical write-protect (WP) screw**: this device
+> 1. **The HP Chromebook 13 G1 has no physical write-protect (WP) screw**: this device
 >    uses Google's Cr50 security chip to protect the firmware.
 > 2. **Easiest way to disable hardware write protection (HW WP): disconnect
 >    the battery cable**. As long as you boot with the charger plugged in while
@@ -79,5 +79,5 @@ If you need to reset the laptop or restore stock ChromeOS later:
 5. Power off once the restore is complete.
 6. On another computer, install the "**Chromebook Recovery Utility**" Chrome
    extension, and create a stock recovery USB drive for model
-   `HP Pro c640 Chromebook` (or enter `DRATINI`).
+   `HP Chromebook 13 G1` (or enter `DRATINI`).
 7. Insert the recovery USB drive and boot; the system will automatically reinstall the official ChromeOS image.

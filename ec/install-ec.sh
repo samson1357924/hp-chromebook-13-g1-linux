@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
-# ec/install-ec.sh - ChromeOS EC Tool & Battery Protection Installer for HP Pro c640
+# ec/install-ec.sh - ChromeOS EC Tool & Battery Protection Installer for HP Chromebook 13 G1
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -27,7 +27,7 @@ show_help() {
 }
 
 install_ec_tools() {
-    log_section "Installing ChromeOS EC Utilities for HP Pro c640 ($DISTRO_NAME)"
+    log_section "Installing ChromeOS EC Utilities for HP Chromebook 13 G1 ($DISTRO_NAME)"
     check_dmi_board || true
 
     local bin_dst="/usr/local/bin/c640-ec-control"

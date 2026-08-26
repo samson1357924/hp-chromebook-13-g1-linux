@@ -1,9 +1,9 @@
 <!-- markdownlint-disable MD060 -->
 
-# HP Pro c640 Chromebook Linux GitHub AI Bot
+# HP Chromebook 13 G1 Linux GitHub AI Bot
 
 Production multi-agent GitHub review and issue triage bot for
-**HP Pro c640 Chromebook (Google Dratini / Hatch platform) Linux Enablement**.
+**HP Chromebook 13 G1 (Google Dratini / Hatch platform) Linux Enablement**.
 
 ---
 

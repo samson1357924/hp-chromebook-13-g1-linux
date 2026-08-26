@@ -2,7 +2,7 @@
 
 # 🛠️ 疑難排解與避坑 FAQ (Troubleshooting & Pitfall Guide)
 
-本文整理了在 **HP Pro c640 Chromebook (Google `dratini`)** 安裝與使用 Linux 時
+本文整理了在 **HP Chromebook 13 G1 (Google `chell`)** 安裝與使用 Linux 時
 最常遇到的十五大問題與根本解決之道。
 
 ---
@@ -22,7 +22,7 @@
 
 ### 2. 核心日誌出現 `cl_dsp_init: timeout with rom_status_reg`，音效卡遺失
 
-* **根本原因**：**Intel Management Engine (ME) 被關閉**。Intel Comet Lake SOF
+* **根本原因**：**Intel Management Engine (ME) 被關閉**。Intel Skylake SOF
   DSP 韌體在開機與時脈初始化時強烈依賴 Intel ME 通訊。
 * **解決方法**：**嚴禁使用 me_cleaner 或在 UEFI 設定中停用 Intel ME**。請確保
   MrChromebox UEFI 韌體中的 Intel ME 為啟用狀態。
@@ -153,7 +153,7 @@
 
 ### 11. 蓋螢幕休眠一整夜耗電過多 (超過 5~8%)
 
-* **根本原因**：Intel AX201 Wi-Fi 背景喚醒 (WoWLAN) 或 PCIe ASPM 節能未完全
+* **根本原因**：Intel 7265 Wi-Fi 背景喚醒 (WoWLAN) 或 PCIe ASPM 節能未完全
   啟用，導致 SoC 無法進入低功耗 Package C10 (SLP_S0#) 狀態。
 * **解決方法**：
   1. 停用 Wi-Fi 睡眠喚醒：
@@ -192,7 +192,7 @@
   sudo systemctl reboot
   ```
 
-  *（2026-08-18 實測：重啟 systemd-logind 在 HP Pro c640 上引發完整登出風暴，
+  *（2026-08-18 實測：重啟 systemd-logind 在 HP Chromebook 13 G1 上引發完整登出風暴，
   外觀上如同系統當機。）*
 
 ### 13. 休眠喚醒後（或鎖定後立刻）鎖定畫面沒有指紋提示
@@ -265,7 +265,7 @@
      `gsd-power` 在休眠時關閉面板；螢幕護盾的鎖定動畫在顯示器關閉期間停滯，
      resume 後動畫完成、電源外掛又把螢幕**關回去**（GNOME/mutter#4111，
      修補候選 gnome-shell!3742——尚未合併）。
-  2. **Comet Lake 的 i915 PSR resume bug**（gitlab.freedesktop.org/drm/i915），
+  2. **Skylake 的 i915 PSR resume bug**（gitlab.freedesktop.org/drm/i915），
      或 kernel 7.0 的 eDP 背光回歸（drm/i915/kernel#16791、#16825）。
      可能性較低——那些 bug 不會因按鍵而恢復。
 * **解決方法（本專案）**：`power/install-power.sh` 的 modprobe 調校
@@ -296,7 +296,7 @@
 * **症狀**：下達 `ectool chargecontrol normal 80 90` 出現 `ERROR: Old EC doesn't support sustainer`，
   或是系統在重開機、S3 休眠喚醒後充超過 90%。
 * **根本原因**：
-  1. HP Pro c640 (Dratini) 搭載 ChromeOS EC v1 韌體 (`dratini_v2.0.2851`)。EC v1 僅支援硬體狀態切換
+  1. HP Chromebook 13 G1 (Dratini) 搭載 ChromeOS EC v1 韌體 (`chell_v2.0.2851`)。EC v1 僅支援硬體狀態切換
      (`normal`, `idle`, `discharge`)，韌體內部不支援自動維持百分比區間的 Sustainer 演算法。
   2. 在 S3 休眠期間或剛開機時，缺乏喚醒鉤子與開機提早啟動會留下暫態空窗，導致短暫以預設 normal 模式充電。
 * **解決方案**：

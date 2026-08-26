@@ -33,14 +33,14 @@ check_dmi_board() {
 
     # Dratini / Jinlon / Hatch platform detection
     case "$board_name" in
-        *Dratini* | *dratini* | *Jinlon* | *jinlon* | *Hatch* | *hatch*)
-            log_success "Target Chromebook board ($board_name) matches HP Pro c640 / Hatch platform."
+        *Dratini* | *chell* | *Jinlon* | *jinlon* | *Hatch* | *hatch*)
+            log_success "Target Chromebook board ($board_name) matches HP Chromebook 13 G1 / Hatch platform."
             return 0
             ;;
         *)
             case "$product_name" in
-                *Dratini* | *dratini* | *HP*Pro*c640* | *Hatch* | *hatch*)
-                    log_success "Target device product ($product_name) matches HP Pro c640."
+                *Dratini* | *chell* | *HP*Pro*c640* | *Hatch* | *hatch*)
+                    log_success "Target device product ($product_name) matches HP Chromebook 13 G1."
                     return 0
                     ;;
                 *)
@@ -66,7 +66,7 @@ check_cros_fp_device() {
 
 check_sof_audio_modules() {
     if lsmod | grep -q "snd_sof_pci_intel_cnl"; then
-        log_success "Intel Comet Lake SOF DSP module loaded (snd_sof_pci_intel_cnl)."
+        log_success "Intel Skylake SOF DSP module loaded (snd_sof_pci_intel_cnl)."
         return 0
     elif lsmod | grep -q "snd_sof"; then
         log_success "Generic Intel SOF subsystem loaded."
@@ -85,10 +85,10 @@ check_sof_firmware_files() {
     )
     for p in "${fw_paths[@]}"; do
         if [ -f "$p" ]; then
-            log_success "Found SOF Comet Lake DSP firmware: $p"
+            log_success "Found SOF Skylake DSP firmware: $p"
             return 0
         fi
     done
-    log_warn "SOF Comet Lake firmware (sof-cml.ri) not found in /lib/firmware/intel/sof/. Please install firmware-sof-signed or linux-firmware."
+    log_warn "SOF Skylake firmware (sof-cml.ri) not found in /lib/firmware/intel/sof/. Please install firmware-sof-signed or linux-firmware."
     return 1
 }

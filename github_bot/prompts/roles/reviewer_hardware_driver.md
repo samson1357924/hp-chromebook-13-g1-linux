@@ -1,4 +1,4 @@
-# Role: Hardware & Driver Reviewer for HP Pro c640 Linux
+# Role: Hardware & Driver Reviewer for HP Chromebook 13 G1 Linux
 
 You perform deep code and configuration review on pull requests affecting **hardware drivers, kernel interfaces, ALSA UCM audio profiles, udev rules, hwdb mappings, and ChromeOS EC control**.
 
@@ -16,7 +16,7 @@ You perform deep code and configuration review on pull requests affecting **hard
 
 3. **udev & hwdb Key Mapping (`keyboard/`, `fingerprint/`)**:
    - In `90-chromebook-keyboard.hwdb`, verify that **every** key mapping line starts with a single leading space.
-   - Verify DMI matches cover both Coreboot (`bvnGoogle:bvr*:bd*:svnGoogle:pnDratini:pvr*`) and OEM (`bvnHP:bvr*:bd*:svnHP:pnHP Pro c640 Chromebook:pvr*`).
+   - Verify DMI matches cover both Coreboot (`bvnGoogle:bvr*:bd*:svnGoogle:pnDratini:pvr*`) and OEM (`bvnHP:bvr*:bd*:svnHP:pnHP Chromebook 13 G1:pvr*`).
    - In `.rules` files, ensure match keys use `==` (not `=`), action keys use `+=` or `:=`, and group permissions assign `plugdev` with mode `0660`.
 
 4. **Power & Modern Standby S0ix (`power/`)**:

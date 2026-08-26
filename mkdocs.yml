@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Samson <https://github.com/samson1357924>
 
 site_name: HP Chromebook 13 G1 Linux
-site_description: Complete Linux hardware enablement for HP Pro c640 (Google Chell / Skylake-Y) — AVS audio SSM4567/NAU8825, keyboard hwdb, keyboard hwdb, power & EC tuning.
+site_description: Complete Linux hardware enablement for HP Chromebook 13 G1 (Google Chell / Skylake-Y) — AVS audio SSM4567/NAU8825, keyboard hwdb, keyboard hwdb, power & EC tuning.
 site_author: Samson
 site_url: https://samson1357924.github.io/hp-chromebook-13-g1-linux/
 repo_url: https://github.com/samson1357924/hp-chromebook-13-g1-linux

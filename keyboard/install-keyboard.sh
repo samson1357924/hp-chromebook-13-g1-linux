@@ -28,7 +28,7 @@ show_help() {
 }
 
 check_keyboard_status() {
-    log_section "HP Pro c640 Keyboard Hardware & hwdb Status"
+    log_section "HP Chromebook 13 G1 Keyboard Hardware & hwdb Status"
     check_dmi_board || true
 
     if [ -f "$HWDB_DST" ]; then

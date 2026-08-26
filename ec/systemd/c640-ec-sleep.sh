@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2026 Samson <https://github.com/samson1357924>
 # /usr/lib/systemd/system-sleep/c640-ec-sleep.sh
 #
-# HP Pro c640 (Google Dratini) — Instant battery charge control re-evaluation on resume.
+# HP Chromebook 13 G1 (Google Dratini) — Instant battery charge control re-evaluation on resume.
 #
 # Why: During S3 deep sleep, userspace polling is frozen. While the ChromeOS EC keeps
 # its hardware state across S3, re-evaluating immediately upon resume ensures zero-window

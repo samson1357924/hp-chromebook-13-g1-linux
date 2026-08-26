@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
-# HP Pro c640 Chromebook (Google Dratini) Audio Diagnostic Script
+# HP Chromebook 13 G1 (Google Dratini) Audio Diagnostic Script
 
 SIM_NO_UCM=0
 OUTPUT=""
@@ -42,7 +42,7 @@ UCM_FILES=(
 )
 
 echo "==========================================================="
-echo "   HP Pro c640 Chromebook Audio Diagnostic Report          "
+echo "   HP Chromebook 13 G1 Audio Diagnostic Report          "
 echo "==========================================================="
 echo ""
 

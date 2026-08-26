@@ -2,7 +2,7 @@
 
 # 📊 硬體相容性矩陣 (Hardware Compatibility Matrix)
 
-HP Pro c640 Chromebook (開發代號：**Google `dratini`**，Baseboard：**`hatch`**，Intel 第 10 代 Comet Lake-U 平台) 在 Linux 下的硬體組件支援狀況如下：
+HP Chromebook 13 G1 (開發代號：**Google `chell`**，Baseboard：**`hatch`**，Intel 第 10 代 Skylake-U 平台) 在 Linux 下的硬體組件支援狀況如下：
 
 ---
 
@@ -14,8 +14,8 @@ HP Pro c640 Chromebook (開發代號：**Google `dratini`**，Baseboard：**`hat
 | **內建立體聲喇叭** | Maxim MAX98357A (I2S Amp) | `snd_soc_max98357a` | 🟢 **正常** | 透過 ALSA UCM2 PCM 5 輸出；**實機驗證**（Chromium 播放）。 |
 | **3.5mm 耳機孔** | Realtek RT5682 (I2C) | `snd_soc_rt5682` | ⚠️ **驅動已綁定** | 裝置存在 (PCM 0)；**插拔自動切換未納入證據**。 |
 | **內建數位麥克風** | 2-channel PDM DMIC | `snd_soc_dmic` | 🟢 **正常** | UCM PCM Split 分流為立體聲 Mic 1 與 Mic 2；**實機驗證**。 |
-| **Wi-Fi 6** | Intel Wi-Fi 6 AX201 (CNVi) | `iwlwifi` | ⚠️ **驅動已綁定** | 開箱即載入；**WPA3 / 吞吐量未量測**。 |
-| **藍牙 5.0** | Intel AX201 Bluetooth | `btusb` / `btintel` | ⚠️ **驅動已綁定** | 控制器存在；**配對 / A2DP 音訊未納入證據**。 |
+| ** Wi-Fi 5** | Intel  Wi-Fi 5 7265 (CNVi) | `iwlwifi` | ⚠️ **驅動已綁定** | 開箱即載入；**WPA3 / 吞吐量未量測**。 |
+| **藍牙 5.0** | Intel 7265 Bluetooth | `btusb` / `btintel` | ⚠️ **驅動已綁定** | 控制器存在；**配對 / A2DP 音訊未納入證據**。 |
 | **觸控板** | ELAN I2C Touchpad | `i2c_hid` / `elan_i2c` | ⚠️ **驅動已綁定** | 模組存在；**多指手勢 / 防誤觸未功能測試**。 |
 | **觸控螢幕 (選配)** | Goodix / ELAN / G2Touch | `i2c_hid_acpi` | ⚠️ **驅動已綁定** | 模組存在；**多點觸控 / 手寫筆輸入未功能測試**。 |
 | **GPU / 內顯** | Intel UHD Graphics 620 | `i915` | ⚠️ **驅動已綁定** | 顯示開箱即用；**VA-API 4K 60fps 解碼未量測**。 |

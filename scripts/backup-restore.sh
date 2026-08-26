@@ -21,7 +21,7 @@ show_help() {
 }
 
 list_backups() {
-    log_section "HP Pro c640 Linux Enablement Manifest & Backup Records"
+    log_section "HP Chromebook 13 G1 Linux Enablement Manifest & Backup Records"
 
     if [ -f "$MANIFEST_FILE" ]; then
         log_info "Manifest file: $MANIFEST_FILE"

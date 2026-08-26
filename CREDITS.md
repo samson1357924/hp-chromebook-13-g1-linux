@@ -9,14 +9,10 @@ in accordance with open-source licensing standards.
 
 ---
 
-## 1. ChromeOS Match-on-Chip Fingerprint Driver (`crfpmoc`)
 
-* **Target Directory**: `fingerprint/driver/`, `fingerprint/tests/`
 * **License**: [GNU Lesser General Public License v2.1 or later (LGPL-2.1-or-later)](LICENSES/LGPL-2.1-or-later.txt)
 * **Upstream Projects**:
   * [libfprint (freedesktop.org)](https://gitlab.freedesktop.org/libfprint/libfprint)
-  * [crfpmoc-driver by Abhinav Baid (libfprint MR #493)](https://gitlab.freedesktop.org/libfprint/libfprint/-/merge_requests/493)
-  * [libfprint `feature/crfpmoc` branch by Marco Trevisan (Treviño)](https://gitlab.freedesktop.org/3v1n0/libfprint)
 * **Copyright Holders**:
   * Copyright (C) 2024 Abhinav Baid `<abhinavbaid@gmail.com>`
   * Copyright (C) 2024 Felix Niederer `<felix@niederer.dev>`
@@ -29,8 +25,6 @@ in accordance with open-source licensing standards.
     interrupt endpoints.
   * Added weak-pointer safety guards (`g_weak_ref_init` / `g_weak_ref_get`) to
     eliminate Use-After-Free crashes during asynchronous enrollment cancellation.
-  * Implemented dynamic random seed storage in `/var/lib/fprint/crfpmoc.key` with strict `0600` permissions.
-  * Created standalone C unit test suite (`fingerprint/tests/test-crfpmoc-unit.c`)
     validating Protocol v3/v1 packet sizes, LE conversions, and bitmasks.
 
 ---
@@ -78,5 +72,5 @@ We express our sincere gratitude to the broader Linux on Chromebook community:
 
 * **MrChromebox** ([mrchromebox.tech](https://mrchromebox.tech/)): For UEFI Full ROM coreboot firmware builds.
 * **Chrultrabook Project**: For pioneering Linux documentation and hardware exploration across Google Chromebook platforms.
-* **Sound Open Firmware (SOF) Project**: For the open-source audio DSP firmware stack enabling Intel Comet Lake audio.
+* **Sound Open Firmware (SOF) Project**: For the open-source audio DSP firmware stack enabling Intel Skylake audio.
 * **Linux Surface Team**: For architectural inspiration regarding clean hardware enablement scripts and diagnostic tooling.

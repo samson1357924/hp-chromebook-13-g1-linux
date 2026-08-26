@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
-# scripts/detect-hardware.sh - Comprehensive Hardware Diagnostic Tool for HP Pro c640 (Dratini)
+# scripts/detect-hardware.sh - Comprehensive Hardware Diagnostic Tool for HP Chromebook 13 G1 (Dratini)
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -14,7 +14,7 @@ source "$ROOT_DIR/lib/distro.sh"
 source "$ROOT_DIR/lib/syscheck.sh"
 
 run_diagnostic() {
-    log_section "HP Pro c640 Chromebook (Google Dratini) Full Diagnostic Report"
+    log_section "HP Chromebook 13 G1 (Google Dratini) Full Diagnostic Report"
 
     # 1. System & Firmware Identification
     log_step 1 6 "System & OS Identification"

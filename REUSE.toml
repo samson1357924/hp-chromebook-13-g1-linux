@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: CC0-1.0
 # SPDX-FileCopyrightText: 2026 Samson <https://github.com/samson1357924>
-# REUSE.toml configuration for HP Pro c640 Chromebook Linux project
+# REUSE.toml configuration for HP Chromebook 13 G1 Linux project
 
 version = 1
 
-SPDX-PackageName = "hp-pro-c640-chromebook-linux"
+SPDX-PackageName = "hp-chromebook-13-g1-linux"
 SPDX-PackageSupplier = "Samson <https://github.com/samson1357924>"
-SPDX-PackageDownloadLocation = "https://github.com/samson1357924/hp-pro-c640-chromebook-linux"
+SPDX-PackageDownloadLocation = "https://github.com/samson1357924/hp-chromebook-13-g1-linux"
 
 # Root orchestrator and core tooling scripts
 [[annotations]]
@@ -18,8 +18,6 @@ path = [
     "keyboard/keyd/**",
     "power/**",
     "ec/**",
-    "fingerprint/install-fingerprint.sh",
-    "fingerprint/packaging/*.sh",
     "audio/install-audio.sh",
     "audio/install-audio-ucm.sh",
     "audio/diagnose-audio.sh",
@@ -49,8 +47,6 @@ SPDX-License-Identifier = "LGPL-2.1-or-later"
 # Fingerprint driver & unit tests (derived from upstream libfprint/crfpmoc)
 [[annotations]]
 path = [
-    "fingerprint/driver/**",
-    "fingerprint/tests/**"
 ]
 SPDX-FileCopyrightText = [
     "2024 Abhinav Baid <abhinavbaid@gmail.com>",
@@ -103,7 +99,6 @@ SPDX-License-Identifier = "CC0-1.0"
 # Fingerprint driver overlay tarball (binary archive of LGPL-2.1-or-later
 # crfpmoc driver sources; PKGBUILD and spec carry their own SPDX headers)
 [[annotations]]
-path = "fingerprint/packaging/crfpmoc-driver-overlay.tar.gz"
 SPDX-FileCopyrightText = [
     "2024 Abhinav Baid <abhinavbaid@gmail.com>",
     "2024 Felix Niederer <felix@niederer.dev>",

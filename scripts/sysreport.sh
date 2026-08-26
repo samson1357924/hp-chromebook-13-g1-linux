@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
-# scripts/sysreport.sh - Unified System Diagnostic & Hardware Report Generator for HP Pro c640
+# scripts/sysreport.sh - Unified System Diagnostic & Hardware Report Generator for HP Chromebook 13 G1
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -51,7 +51,7 @@ redact() {
     sed "${REDACT_ARGS[@]}"
 }
 
-log_section "Generating HP Pro c640 Linux Diagnostic Bundle"
+log_section "Generating HP Chromebook 13 G1 Linux Diagnostic Bundle"
 log_info "Collecting system information into temporary folder: $REPORT_DIR..."
 
 # 1. Hardware & DMI

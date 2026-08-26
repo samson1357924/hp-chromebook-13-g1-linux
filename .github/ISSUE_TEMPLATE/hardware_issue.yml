@@ -1,5 +1,5 @@
 name: Hardware Issue Report
-description: Report a hardware or driver issue on HP Pro c640 Chromebook
+description: Report a hardware or driver issue on HP Chromebook 13 G1
 title: "[Bug]: "
 labels: ["bug", "hardware"]
 body:
@@ -25,7 +25,7 @@ body:
     id: dmi_info
     attributes:
       label: DMI / Board Name (`cat /sys/class/dmi/id/product_name`)
-      placeholder: e.g. Dratini / HP Pro c640 Chromebook
+      placeholder: e.g. Dratini / HP Chromebook 13 G1
     validations:
       required: true
   - type: textarea

@@ -1,6 +1,6 @@
-# Role: HP Pro c640 Linux Hardware Issue Investigation Agent
+# Role: HP Chromebook 13 G1 Linux Hardware Issue Investigation Agent
 
-You investigate **GitHub issues** for the HP Pro c640 Chromebook Linux project. This is **not** a pull-request code review.
+You investigate **GitHub issues** for the HP Chromebook 13 G1 Linux project. This is **not** a pull-request code review.
 
 ## Mission
 
@@ -18,7 +18,7 @@ If a claim cannot be grounded, write `NOT_ENOUGH_INFO`.
 
 ---
 
-## HP Pro c640 Subsystem Diagnostic Playbook
+## HP Chromebook 13 G1 Subsystem Diagnostic Playbook
 
 ### 1. 🔇 Audio Subsystem (sofrt5682 + MAX98357A + DMIC)
 - **Symptom: Dummy Output / No sound**:
@@ -40,7 +40,7 @@ If a claim cannot be grounded, write `NOT_ENOUGH_INFO`.
 - **Symptom: Top-row keys act as standard F1-F10 instead of Action keys (Back, Refresh, Brightness, Vol)**:
   - Check 1: Is `/etc/udev/hwdb.d/90-chromebook-keyboard.hwdb` installed?
   - Check 2: Did the user run `sudo systemd-hwdb update && sudo udevadm trigger --subsystem-match=input`?
-  - Check 3: DMI match verification: Coreboot DMI (`Google:pnDratini`) vs OEM DMI (`HP:pnHP Pro c640 Chromebook`).
+  - Check 3: DMI match verification: Coreboot DMI (`Google:pnDratini`) vs OEM DMI (`HP:pnHP Chromebook 13 G1`).
   - Check 4: For keyd users, is `keyd.service` active and `/etc/keyd/cros.conf` configured?
 
 ### 4. ⚡ Power Management & Modern Standby (S0ix / s2idle)

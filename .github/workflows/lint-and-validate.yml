@@ -41,7 +41,7 @@ jobs:
 
       - name: Run ShellCheck (Modular with External Sources)
         run: |
-          find . -type f -name "*.sh" -not -path "*/.*/*" -print0 | xargs -0 shellcheck -S warning -x -P lib:scripts:audio:keyboard:fingerprint:power:ec -s bash
+          find . -type f -name "*.sh" -not -path "*/.*/*" -print0 | xargs -0 shellcheck -S warning -x -P lib:scripts:audio:keyboard:power:ec -s bash
 
       - name: Run shfmt Check (Formatting Consistency)
         run: |
@@ -72,10 +72,10 @@ jobs:
           echo "${HWDB_OUT1}" | grep -q "KEYBOARD_KEY_e7=refresh"
           echo "${HWDB_OUT1}" | grep -q "KEYBOARD_KEY_a0=mute"
 
-          # Query assertion 2: HP OEM DMI (HP Pro c640 Chromebook)
-          QUERY_DMI2="evdev:atkbd:dmi:bvnHP:bvr13579:bd01/01/2021:svnHP:pnHP Pro c640 Chromebook:pvr1.0"
+          # Query assertion 2: HP OEM DMI (HP Chromebook 13 G1)
+          QUERY_DMI2="evdev:atkbd:dmi:bvnHP:bvr13579:bd01/01/2021:svnHP:pnHP Chromebook 13 G1:pvr1.0"
           HWDB_OUT2=$(systemd-hwdb --root="${SANDBOX_DIR}" query "${QUERY_DMI2}")
-          echo "Query Output for HP Pro c640 (OEM):"
+          echo "Query Output for HP Chromebook 13 G1 (OEM):"
           echo "${HWDB_OUT2}"
           echo "${HWDB_OUT2}" | grep -q "KEYBOARD_KEY_ea=back"
           echo "${HWDB_OUT2}" | grep -q "KEYBOARD_KEY_a0=mute"
@@ -85,7 +85,6 @@ jobs:
       - name: Validate udev Rules Syntax
         run: |
           if udevadm --help | grep -q "verify"; then
-            udevadm verify fingerprint/60-cros-fp.rules
           else
             while IFS= read -r rule_file; do
               echo "Checking $rule_file"

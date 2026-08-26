@@ -1,88 +1,33 @@
-# 🚀 Quick Start Guide
+# 🚀 Quick Start Guide (HP Chromebook 13 G1 - chell)
 
-This guide walks you through all the hardware driver configuration on your
-**HP Pro c640 Chromebook** (Google `dratini` / `hatch`) in a few minutes (fingerprint build takes longer).
+This guide walks you through enabling Linux on **HP Chromebook 13 G1 (Google `chell`, Skylake-Y)** in a few minutes.
 
----
+> **First pitfall**: The Ubuntu installer will only enter the live/install UI via **Ubuntu (safe graphics)** or by pressing `e` in GRUB and appending `nomodeset` to the `linux` line. See [PITFALL-01: nomodeset for installer](pitfalls/01-safe-graphics-nomodeset.md).
 
 ## ⚡ One-Liner Setup
 
-Copy and run the following commands to automatically install the top-row
-keyboard mapping, ALSA UCM2 audio configuration and the `crfpmoc` fingerprint
-driver:
-
 ```bash
-git clone https://github.com/samson1357924/hp-pro-c640-chromebook-linux.git ~/projects/hp-pro-c640-chromebook-linux
-cd ~/projects/hp-pro-c640-chromebook-linux
+git clone https://github.com/samson1357924/hp-chromebook-13-g1-linux.git ~/projects/hp-chromebook-13-g1-linux
+cd ~/projects/hp-chromebook-13-g1-linux
 chmod +x setup.sh
 ./setup.sh --all
 ```
 
----
-
-## 🧭 Common Commands Overview
+## 🧭 Common Commands
 
 | Purpose | Command |
 | :--- | :--- |
-| **Full one-click installation** | `./setup.sh --all` |
-| **Install only the audio UCM configuration** | `./setup.sh --audio` or `./audio/install-audio.sh` |
-| **Install only the fingerprint driver and PAM** | `./setup.sh --fingerprint` or `./fingerprint/install-fingerprint.sh` |
-| **Install only the keyboard top-row mapping** | `./setup.sh --keyboard` or `./keyboard/install-keyboard.sh` |
-| **Install only the power management tweaks** | `./power/install-power.sh` |
-| **Enable the 90% battery protection service** | `./ec/install-ec.sh --enable-battery-limit` |
-| **Comprehensive hardware diagnostics** | `./setup.sh --check` or `./scripts/detect-hardware.sh` |
-| **Preview all changes (dry-run)** | `./setup.sh --all --dry-run` |
-| **One-click uninstall and rollback** | `./setup.sh --uninstall` |
+| **Full install (keyboard + audio + power + EC + graphics fix)** | `./setup.sh --all` |
+| **Audio diagnostics (AVS SSM4567/NAU8825)** | `./setup.sh --audio` or `./audio/install-audio.sh` |
+| **Keyboard top-row mapping** | `./setup.sh --keyboard` |
+| **Power & EC (90% battery + S3)** | `./setup.sh --power` / `./setup.sh --ec` |
+| **Graphics fix (remove nomodeset)** | `./setup.sh --graphics` or `./scripts/fix-graphics.sh` |
+| **Hardware diagnostics** | `./setup.sh --check` |
+| **Dry-run preview** | `./setup.sh --all --dry-run` |
+| **Uninstall & rollback** | `./setup.sh --uninstall` |
 
----
+## 📝 After Install
 
-## 🖐️ Fingerprint Enrollment
-
-After installation, enroll your fingerprint with the standard `fprintd` tool:
-
-```bash
-# 1. Enroll the default finger (right index finger)
-fprintd-enroll "$USER"
-
-# 2. Verify the fingerprint
-fprintd-verify "$USER"
-
-# 3. Test sudo authentication (use -k to clear the existing sudo cache)
-sudo -k && sudo whoami
-```
-
----
-
-## 🔊 Test Audio Immediately
-
-```bash
-# Test stereo speaker output
-speaker-test -c 2 -t wav
-
-# Check the current audio device status
-wpctl status
-```
-
----
-
-## 🔋 Check EC & Battery Protection
-
-```bash
-# Inspect complete EC health dashboard
-c640-ec-control status
-
-# Set battery limit to 90% (with automatic AC bypass)
-c640-ec-control battery-limit 90
-
-# Quiet typing fan silent mode
-c640-ec-control fan-silent
-```
-
----
-
-## 📖 What's Next
-
-* Running into any problems? See the [Troubleshooting & Pitfall FAQ (TROUBLESHOOTING.md)](TROUBLESHOOTING.md).
-* Want to learn about MrChromebox flashing and hardware write-protection
-  removal? See the [Firmware Flashing & Recovery Guide (FIRMWARE.md)](FIRMWARE.md).
-* Using a specific distro (Fedora/Arch/NixOS)? See the [distro-specific guides (distros/)](distros/ubuntu-debian.md).
+1. **Graphics**: If you installed via safe graphics, run `./scripts/fix-graphics.sh` then `sudo reboot` to enable `i915` acceleration (verify: `lsmod | grep i915`).
+2. **Audio**: `aplay -l` should show `SSM4567` + `NAU8825` + `DMIC`; `wpctl status` should list sinks/sources.
+3. **Keyboard**: Top-row maps to F1-F10/media via `hwdb`.

@@ -69,7 +69,7 @@
   > 移除電源模組後請**重新開機**（或登出再登入）——**不要**執行
   > `systemctl restart systemd-logind`。在有登入 session 的桌面環境中重啟
   > `systemd-logind` 會登出所有人（session leader 在 deserialization 時遺失），
-  > 外觀上與系統當機完全相同（HP Pro c640 實測，2026-08-18）。
+  > 外觀上與系統當機完全相同（HP Chromebook 13 G1 實測，2026-08-18）。
 
 * **僅移除 EC 工具與服務**（含 90% 電池保護 `c640-battery-limit.service` 與 `c640-ec-sleep.sh`）：
 

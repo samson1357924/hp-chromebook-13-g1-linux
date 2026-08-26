@@ -1,4 +1,4 @@
-# Keyboard Top-Row Mapping (HP Pro c640 Chromebook)
+# Keyboard Top-Row Mapping (HP Chromebook 13 G1)
 
 ChromeOS devices feature dedicated top-row action keys instead of traditional
 F1-F12 keys. Under standard Linux, these keys can be remapped either at the

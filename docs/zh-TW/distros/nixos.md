@@ -72,7 +72,7 @@ in
   # 6. 鍵盤頂排映射 (udev hwdb)
   services.udev.extraHwdb = ''
     evdev:atkbd:dmi:bvn*:bvr*:bd*:svnGoogle*:pn*Dratini*:pvr*
-    evdev:atkbd:dmi:bvn*:bvr*:bd*:svnGoogle*:pn*dratini*:pvr*
+    evdev:atkbd:dmi:bvn*:bvr*:bd*:svnGoogle*:pn*chell*:pvr*
     evdev:atkbd:dmi:bvn*:bvr*:bd*:svnGoogle*:pn*Hatch*:pvr*
     evdev:atkbd:dmi:bvn*:bvr*:bd*:svnHP*:pnHP*Pro*c640*Chromebook*:pvr*
      KEYBOARD_KEY_ea=back

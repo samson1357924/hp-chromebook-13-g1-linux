@@ -1,4 +1,4 @@
-# Root Cause: Dummy Output on sofrt5682 (HP Pro c640)
+# Root Cause: Dummy Output on sofrt5682 (HP Chromebook 13 G1)
 
 ## 1. TL;DR
 

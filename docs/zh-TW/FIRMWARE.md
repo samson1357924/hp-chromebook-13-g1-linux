@@ -2,7 +2,7 @@
 
 # 🔧 韌體刷機與還原指南 (Firmware & Recovery Guide)
 
-本指南詳細說明如何為 **HP Pro c640 Chromebook (Google `dratini`)** 刷入
+本指南詳細說明如何為 **HP Chromebook 13 G1 (Google `chell`)** 刷入
 **MrChromebox UEFI Full ROM** 韌體以安裝原生 Linux，以及未來如何 100% 完整還原
 回原廠 ChromeOS。
 
@@ -12,7 +12,7 @@
 
 > [!IMPORTANT]
 >
-> 1. **HP Pro c640 沒有實體防寫螺絲 (No WP Screw)**：本機採用 Google Cr50 安全晶片保護韌體。
+> 1. **HP Chromebook 13 G1 沒有實體防寫螺絲 (No WP Screw)**：本機採用 Google Cr50 安全晶片保護韌體。
 > 2. **解除寫入保護（HW WP）的最簡方法：斷開電池排線**。只要在拔掉電池排線的狀態下插上充電器開機，Cr50 即會自動停用硬體寫入保護！
 > 3. **永遠備份原廠 ROM**：在執行 MrChromebox 韌體刷機工具時，系統會提示備份原始韌體，**務必插入隨身碟保存 `stock-firmware.rom`**。
 
@@ -69,6 +69,6 @@
 4. 插入存有先前備份的 `stock-firmware.rom` 隨身碟，依照畫面指示完成還原。
 5. 還原完成後關機。
 6. 使用其他電腦在 Chrome 瀏覽器安裝擴充功能「**Chromebook 復原公用程式
-   (Chromebook Recovery Utility)**」，為型號 `HP Pro c640 Chromebook` (或輸入
+   (Chromebook Recovery Utility)**」，為型號 `HP Chromebook 13 G1` (或輸入
    `DRATINI`) 製作原廠復原隨身碟。
 7. 插入復原隨身碟並開機，系統將全自動重灌原廠 ChromeOS 官方鏡像。

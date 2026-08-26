@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
-# scripts/c640-ec-control.sh - ChromeOS EC Control Utility for HP Pro c640 (Dratini)
+# scripts/c640-ec-control.sh - ChromeOS EC Control Utility for HP Chromebook 13 G1 (Dratini)
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -27,7 +27,7 @@ source "$LIB_DIR/logger.sh"
 source "$LIB_DIR/syscheck.sh"
 
 show_help() {
-    echo "HP Pro c640 ChromeOS Embedded Controller (EC) Control Utility"
+    echo "HP Chromebook 13 G1 ChromeOS Embedded Controller (EC) Control Utility"
     echo ""
     echo "Usage: $0 [COMMAND] [ARGS...]"
     echo ""
@@ -73,7 +73,7 @@ run_ec() {
 }
 
 show_status() {
-    log_section "HP Pro c640 ChromeOS EC Health Dashboard"
+    log_section "HP Chromebook 13 G1 ChromeOS EC Health Dashboard"
     check_dmi_board || true
 
     log_info "=== Battery Status (/sys/class/power_supply/BAT0) ==="

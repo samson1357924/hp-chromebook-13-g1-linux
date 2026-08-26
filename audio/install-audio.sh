@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
-# audio/install-audio.sh - Modular Audio UCM2 Installer & Manager for HP Pro c640 (Dratini)
+# audio/install-audio.sh - Modular Audio UCM2 Installer & Manager for HP Chromebook 13 G1 (Dratini)
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -40,7 +40,7 @@ show_help() {
 }
 
 check_audio_status() {
-    log_section "HP Pro c640 Audio Hardware & Driver Status"
+    log_section "HP Chromebook 13 G1 Audio Hardware & Driver Status"
     check_dmi_board || true
     check_sof_audio_modules || true
     check_sof_firmware_files || true
@@ -88,7 +88,7 @@ uninstall_audio() {
 }
 
 install_audio() {
-    log_section "Installing ALSA UCM2 Profiles for HP Pro c640 (Dratini)"
+    log_section "Installing ALSA UCM2 Profiles for HP Chromebook 13 G1 (Dratini)"
 
     # Pre-flight check
     check_dmi_board || true

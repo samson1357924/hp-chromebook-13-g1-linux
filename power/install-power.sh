@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
-# power/install-power.sh - Power Management & Modern Standby (S0ix) Optimizer for HP Pro c640
+# power/install-power.sh - Power Management & Modern Standby (S0ix) Optimizer for HP Chromebook 13 G1
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -27,7 +27,7 @@ show_help() {
 }
 
 check_power_status() {
-    log_section "HP Pro c640 Power Management & Modern Standby Status"
+    log_section "HP Chromebook 13 G1 Power Management & Modern Standby Status"
     check_dmi_board || true
 
     local mem_sleep
@@ -73,7 +73,7 @@ uninstall_power() {
 }
 
 install_power() {
-    log_section "Installing Power & S0ix Optimizations for HP Pro c640 ($DISTRO_NAME)"
+    log_section "Installing Power & S0ix Optimizations for HP Chromebook 13 G1 ($DISTRO_NAME)"
 
     # Preflight check
     check_dmi_board || true
@@ -99,7 +99,7 @@ install_power() {
     esac
 
     # 2. Deploy TLP configuration
-    log_step 2 4 "Deploying Comet Lake TLP profile..."
+    log_step 2 4 "Deploying Skylake TLP profile..."
     local tlp_dst="/etc/tlp.d/99-hp-c640.conf"
     local tlp_src="$SCRIPT_DIR/tlp/99-hp-c640.conf"
     if [ -f "$tlp_src" ]; then

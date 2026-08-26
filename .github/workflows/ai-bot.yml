@@ -1,4 +1,4 @@
-name: HP Pro c640 Multi-Agent GitHub AI Bot
+name: HP Chromebook 13 G1 Multi-Agent GitHub AI Bot
 
 on:
   # NOTE: pull_request_target runs in the base-branch context with secrets access
