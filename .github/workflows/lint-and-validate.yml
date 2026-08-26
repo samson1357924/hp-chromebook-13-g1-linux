@@ -1,0 +1,106 @@
+name: Static Analysis & Hardware Config Validation
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shell-and-workflows:
+    name: Shell Scripts & Workflows Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install Linting Tools
+        run: |
+          set -euo pipefail
+
+          # Install actionlint (pinned version with checksum verification)
+          curl -sSLo actionlint.tar.gz "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz"
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  actionlint.tar.gz" | sha256sum -c -
+          tar -xzf actionlint.tar.gz actionlint
+          sudo mv actionlint /usr/local/bin/
+
+          # Install shfmt (pinned version with checksum verification)
+          curl -sSLo shfmt "https://github.com/mvdan/sh/releases/download/v3.8.0/shfmt_v3.8.0_linux_amd64"
+          echo "27b3c6f9d9592fc5b4856c341d1ff2c88856709b9e76469313642a1d7b558fe0  shfmt" | sha256sum -c -
+          chmod +x shfmt
+          sudo mv shfmt /usr/local/bin/
+
+      - name: Run actionlint (Workflow & Inline Shell Validation)
+        run: |
+          actionlint -color
+
+      - name: Run ShellCheck (Modular with External Sources)
+        run: |
+          find . -type f -name "*.sh" -not -path "*/.*/*" -print0 | xargs -0 shellcheck -S warning -x -P lib:scripts:audio:keyboard:fingerprint:power:ec -s bash
+
+      - name: Run shfmt Check (Formatting Consistency)
+        run: |
+          find . -type f -name "*.sh" -not -path "*/.*/*" -print0 | xargs -0 shfmt -d -i 4 -ci -bn -sr
+
+  hardware-configs:
+    name: Validate hwdb, udev & keyd
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Validate systemd-hwdb & Test DMI Queries
+        run: |
+          SANDBOX_DIR=$(mktemp -d)
+          mkdir -p "${SANDBOX_DIR}/etc/udev/hwdb.d"
+          cp keyboard/90-chromebook-keyboard.hwdb "${SANDBOX_DIR}/etc/udev/hwdb.d/"
+
+          # Strict compilation of hwdb binary
+          systemd-hwdb --root="${SANDBOX_DIR}" --strict update
+
+          # Query assertion 1: Google Coreboot DMI (Dratini)
+          QUERY_DMI1="evdev:atkbd:dmi:bvnGoogle:bvr13579:bd01/01/2021:svnGoogle:pnDratini:pvr1.0"
+          HWDB_OUT1=$(systemd-hwdb --root="${SANDBOX_DIR}" query "${QUERY_DMI1}")
+          echo "Query Output for Dratini (Coreboot):"
+          echo "${HWDB_OUT1}"
+          echo "${HWDB_OUT1}" | grep -q "KEYBOARD_KEY_ea=back"
+          echo "${HWDB_OUT1}" | grep -q "KEYBOARD_KEY_e7=refresh"
+          echo "${HWDB_OUT1}" | grep -q "KEYBOARD_KEY_a0=mute"
+
+          # Query assertion 2: HP OEM DMI (HP Pro c640 Chromebook)
+          QUERY_DMI2="evdev:atkbd:dmi:bvnHP:bvr13579:bd01/01/2021:svnHP:pnHP Pro c640 Chromebook:pvr1.0"
+          HWDB_OUT2=$(systemd-hwdb --root="${SANDBOX_DIR}" query "${QUERY_DMI2}")
+          echo "Query Output for HP Pro c640 (OEM):"
+          echo "${HWDB_OUT2}"
+          echo "${HWDB_OUT2}" | grep -q "KEYBOARD_KEY_ea=back"
+          echo "${HWDB_OUT2}" | grep -q "KEYBOARD_KEY_a0=mute"
+
+          echo "All hwdb key mappings verified across Coreboot & OEM DMI strings!"
+
+      - name: Validate udev Rules Syntax
+        run: |
+          if udevadm --help | grep -q "verify"; then
+            udevadm verify fingerprint/60-cros-fp.rules
+          else
+            while IFS= read -r rule_file; do
+              echo "Checking $rule_file"
+              grep -E 'KERNEL=[^=]' "$rule_file" && { echo "Error: KERNEL must use == for match"; exit 1; }
+              grep -E 'SUBSYSTEM=[^=]' "$rule_file" && { echo "Error: SUBSYSTEM must use == for match"; exit 1; }
+              grep -E 'TAG=[^=+]' "$rule_file" && { echo "Error: TAG assignment should usually use +="; exit 1; }
+            done < <(find . -type f -name "*.rules" -print0)
+          fi
+          echo "udev rules verified successfully."
+
+      - name: Validate keyd Configuration
+        run: |
+          git clone --depth 1 --branch v2.6.0 https://github.com/rvaiya/keyd /tmp/keyd-src
+          test "$(git -C /tmp/keyd-src rev-parse HEAD)" = "7c0aecb8bfd34dc8642bf4eefd2e59c89e61cec3"
+          make -C /tmp/keyd-src
+          sudo make -C /tmp/keyd-src install
+          keyd check keyboard/keyd/cros.conf
+          echo "keyd configuration valid."

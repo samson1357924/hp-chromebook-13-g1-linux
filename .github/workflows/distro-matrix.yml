@@ -1,0 +1,138 @@
+name: Cross-Distro Integration & Docs QA
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  schedule:
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Containers use /bin/sh by default; force bash so `source` works everywhere
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  docs-check:
+    name: Markdown Lint & Link Integrity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Run markdownlint-cli2
+        uses: DavidAnson/markdownlint-cli2-action@05f32210e84442804257b2a6f20b273450ec8265 # v19.1.0
+        with:
+          globs: '**/*.md'
+          config: '.markdownlint.yaml'
+
+      - name: Check Relative Markdown Links
+        run: |
+          set -euo pipefail
+          # Every relative link must resolve against its own file's directory.
+          # (lychee resolves relative links against --base, which does not
+          # match how these docs are organized, so this is checked here.)
+          fail=0
+          while IFS= read -r f; do
+            dir=$(dirname "$f")
+            while IFS= read -r t; do
+              [ -z "$t" ] && continue
+              t="${t%% *}"
+              case "$t" in
+                http://*|https://*|mailto:*|\#*|/*) continue ;;
+              esac
+              t="${t%%#*}"
+              [ -z "$t" ] && continue
+              # resolve against the file's dir (cd handles ../ correctly)
+              if ! (cd "$dir" && [ -e "$t" ]); then
+                echo "BROKEN: $f -> $t"
+                fail=1
+              fi
+            done < <(grep -oE '\[[^]]*\]\([^)]*\)' "$f" | sed -E 's/^\[[^]]*\]\(([^)]*)\)/\1/')
+          done < <(find . -type f -name '*.md' -not -path './.git/*' \
+            -not -path './site/*' -not -path './.cache/*' \
+            -not -path './audio/upstream/*' -not -path './github_bot/prompts/*')
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::Broken relative markdown links found"
+            exit 1
+          fi
+
+      - name: Run Lychee Link Checker
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2.9.0
+        with:
+          args: >-
+            --config lychee.toml
+            "**/*.md"
+          # Broken links now fail the check: the docs are the primary
+          # user-facing interface of this project. See lychee.toml for the
+          # (narrow) exclusion list and accepted status codes.
+          fail: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  distro-matrix-test:
+    name: Distro Matrix (${{ matrix.distro.name }})
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.distro.image }}
+      options: --user root
+    strategy:
+      fail-fast: false
+      matrix:
+        distro:
+          - name: "Ubuntu 24.04 (Noble)"
+            image: "ubuntu:24.04@sha256:d78ab76437b1afc5f01e223d6bf0172763f404bb166441328845adbef44518cb"
+            family: "debian"
+            init_cmd: "apt-get update -y && apt-get install -y --no-install-recommends bash coreutils sudo ca-certificates git"
+            check_pkgs_cmd: "apt-get install --dry-run -y"
+
+          - name: "Fedora 42"
+            image: "fedora:42@sha256:99e203b80b1c3d8f7e161ec10a68fd02b081ef83a3963553e513c82846b97814"
+            family: "fedora"
+            init_cmd: "dnf install -y bash coreutils sudo git"
+            check_pkgs_cmd: "dnf download --resolve --destdir=/tmp/ci-dnf-check"
+
+          - name: "Arch Linux"
+            image: "archlinux:base-devel@sha256:aecf5b39bd3139a951090dfb3d940f9317e4c5fca038c65fb49ac03910f7133e"
+            family: "arch"
+            init_cmd: "pacman -Syu --noconfirm --needed bash coreutils sudo git"
+            check_pkgs_cmd: "pacman -Sp --needed"
+
+    steps:
+      - name: Prepare Minimal Container Environment
+        run: |
+          ${{ matrix.distro.init_cmd }}
+
+      - name: Checkout Code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Verify OS Classification
+        run: |
+          source ./lib/distro.sh
+          echo "Detected Family: $DISTRO_FAMILY ($DISTRO_NAME)"
+          if [ "$DISTRO_FAMILY" != "${{ matrix.distro.family }}" ]; then
+            echo "Family mismatch: expected ${{ matrix.distro.family }}, got $DISTRO_FAMILY"
+            exit 1
+          fi
+
+      - name: Verify Dependencies Resolution
+        run: |
+          source ./lib/distro.sh
+          DEPS=$(get_fingerprint_build_deps)
+          echo "Resolving packages: $DEPS"
+          read -r -a deps_arr <<< "$DEPS"
+          ${{ matrix.distro.check_pkgs_cmd }} "${deps_arr[@]}"
+          rm -rf /tmp/ci-dnf-check
+
+      - name: Test Setup CLI Dry-Run
+        run: |
+          chmod +x setup.sh lib/*.sh scripts/*.sh audio/*.sh keyboard/*.sh fingerprint/*.sh ec/*.sh power/*.sh
+          ./setup.sh --all --dry-run
+          ./setup.sh --check --dry-run
+          ./setup.sh --uninstall --dry-run

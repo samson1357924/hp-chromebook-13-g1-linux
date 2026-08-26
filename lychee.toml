@@ -1,0 +1,44 @@
+# lychee.toml - Link checker configuration for HP Pro c640 Linux Enablement
+root_dir = "."
+format = "detailed"
+
+# Retry generously: gitlab.freedesktop.org (canonical libfprint repo,
+# linked from the READMEs) periodically has gateway timeouts; a link is
+# only reported as broken after these retries fail.
+max_retries = 5
+retry_wait_time = 5
+timeout = 20
+max_concurrency = 16
+exclude_all_private = true
+exclude = [
+    'site/.*',
+    '\.cache/.*',
+    'overrides/.*',
+    'hp-pro-c640.*',
+    'https://samson1357924.github.io/hp-pro-c640-chromebook-linux.*',
+    '^https?://localhost',
+    '^https?://127\.0\.0\.1',
+    '^https?://192\.168\.',
+    '^https?://example\.com',
+    'https://www.linkedin.com/.*',
+    'https://twitter.com/.*',
+    'https://x.com/.*',
+    'https://reddit.com/.*',
+    # HP spec pages reject HEAD/GET from CI and bot user agents (HTTP/2
+    # protocol errors, 403s); the URL is user-verifiable in a browser.
+    'https://support\.hp\.com/.*',
+    # ALSA site accepts TCP/TLS but never answers HTTP from CI and other
+    # networks (documented recurring outages, e.g. adoptium/temurin-build#3932);
+    # the URL is user-verifiable in a browser.
+    'https?://(www\.)?alsa-project\.org/.*',
+    # pipewire.org (Fastly CDN) intermittently refuses connections from
+    # CI runner egress networks while working fine in browsers; the URL
+    # is user-verifiable in a browser.
+    'https?://(www\.)?pipewire\.org/.*'
+]
+
+# Gateway / Server errors (500/502/503/504) mean the server had a temporary issue;
+# with the retries above these are infrastructure flakiness (gitlab.freedesktop.org
+# is a recurring offender), not broken links. Real dead links still fail
+# with 404/410/etc.
+accept = [200, 204, 206, 403, 500, 502, 503, 504]

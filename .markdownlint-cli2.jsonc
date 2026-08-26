@@ -1,0 +1,10 @@
+{
+  "$schema": "https://raw.githubusercontent.com/DavidAnson/markdownlint-cli2/main/schema/markdownlint-cli2-config-schema.json",
+  "config": ".markdownlint.yaml",
+  "ignores": [
+    "audio/upstream/**",
+    "github_bot/prompts/**",
+    "site/**",
+    ".cache/**"
+  ]
+}

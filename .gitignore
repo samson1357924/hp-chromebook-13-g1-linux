@@ -1,0 +1,91 @@
+# Build artifacts
+build/
+_build/
+subprojects/
+meson-logs/
+.ninja*
+*.o
+*.so
+*.a
+*.pcapng
+*.variant
+*.log
+*.testlog
+
+# Packaging & distribution
+*.deb
+*.rpm
+*.tar
+*.tar.gz
+*.tar.xz
+*.tgz
+*.zip
+debian/.debhelper/
+debian/files
+debian/*.substvars
+
+# Diagnostics (hardware reports may contain serials & PII)
+c640-diagnostic-*
+diagnostic-*.tar*
+
+# Secrets & credentials
+.env
+.env.*
+!.env.example
+.envrc
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
+*.secret
+.credentials
+.netrc
+
+# Shell history & misc
+.bash_history
+.zsh_history
+nohup.out
+Thumbs.db
+core
+core.*
+*.tmp
+
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+node_modules/
+.venv/
+
+# Linux Kernel out-of-tree artifacts
+*.ko
+*.mod
+*.mod.c
+modules.order
+Module.symvers
+
+# EC binaries
+ec/bin/*
+!ec/bin/.gitkeep
+
+# GitHub Pages / MkDocs
+site/
+.cache/
+.jekyll-cache/
+_site/
+public/
+
+# Editor & System
+.DS_Store
+.vscode/
+.idea/
+*~
+*.swp
