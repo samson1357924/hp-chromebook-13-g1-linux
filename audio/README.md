@@ -1,4 +1,5 @@
-<!-- markdownlint-disable MD013 MD060 -->
+<!-- markdownlint-disable-file -->
+
 
 # 🔊 Audio - HP Chromebook 13 G1 (CHELL, AVS)
 
