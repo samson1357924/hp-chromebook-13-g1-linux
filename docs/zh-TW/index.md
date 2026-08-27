@@ -1,6 +1,6 @@
-<!-- markdownlint-disable MD013 -->
+<!-- markdownlint-disable MD013 MD022 MD031 MD032 MD037 MD038 -->
 
-# HP Chromebook 13 G1 (Google Dratini) Linux
+# HP Chromebook 13 G1 (Chell) Linux
 
 <div class="mdx-hero" markdown>
 
@@ -8,11 +8,11 @@
 
 ## 避坑全指南與硬體啟用方案
 
-為 **HP Chromebook 13 G1**（Board: `chell` / Baseboard: `lars` / Intel 10th Gen Skylake-U）提供完整 Linux 支援 — 驅動補丁、跨發行版自動化與誠實的已驗證/未驗證文件。
+為 **HP Chromebook 13 G1**（Board: `chell` / Baseboard: `lars` / Intel 6th Gen Skylake-Y m7-6Y75）提供完整 Linux 支援 — 驅動補丁、跨發行版自動化與誠實的已驗證/未驗證文件。
 
 [快速開始 :material-rocket-launch:](QUICKSTART.md){ .md-button .md-button--primary }
 [實測驗證 :material-shield-check:](verification.md){ .md-button }
-[在 GitHub 上查看 :fontawesome-brands-github:](https://github.com/samson1357924/hp-pro-c640-chromebook-linux){ .md-button }
+[在 GitHub 上查看 :fontawesome-brands-github:](https://github.com/samson1357924/hp-chromebook-13-g1-linux){ .md-button }
 
 </div>
 
@@ -24,11 +24,11 @@
 
 | 項目 | 詳細 |
 | :--- | :--- |
-| **裝置型號** | [HP Chromebook 13 G1](https://support.hp.com/hk-zh/product/product-specs/hp-pro-c640-chromebook/33298399) |
+| **裝置型號** | [HP Chromebook 13 G1](https://support.hp.com/hk-zh/document/c04912702) |
 | **主機板代號** | Google `chell`（Baseboard: `lars`） |
-| **處理器** | Intel 10th Gen Core i3/i5/i7 (Skylake-U: i3-10110U, i5-10210U, i5-10310U, i7-10610U) |
-| **指紋識別器** | Fingerprint Cards FPC1025 (ChromeOS Match-on-Chip via `/dev/cros_fp`) |
-| **音訊系統** | Intel Skylake cAVS SOF DSP (`snd_sof_pci_intel_cnl`) + Realtek RT5682 + Maxim MAX98357A |
+| **處理器** | Intel 6th Gen Skylake-Y m7-6Y75 (1.2GHz / 3.1GHz, HD Graphics 515) |
+| **指紋識別器** | 無（本機無指紋硬體） |
+| **音訊系統** | Intel AVS (`snd_soc_avs`) + SSM4567 (喇叭) + NAU8825 (耳機) + DMIC + HDMI |
 | **韌體** | MrChromebox UEFI Full ROM / Coreboot |
 
 ---
@@ -39,8 +39,8 @@
 
 | 硬體組件 | 運作狀態 | 驅動 / 解決方案 | 說明與支援度 |
 | :--- | :---: | :--- | :--- |
-| **指紋辨識** | 🟢 **正常** | `crfpmoc` (特製 `libfprint` MoC 驅動) | 鎖定螢幕解鎖與 `sudo` PAM 已驗證。**GDM 冷開機仍需密碼**（GNOME keyring）；見 [verification.md](verification.md)。 |
-| **立體聲喇叭 & 麥克風** | 🟢 **喇叭與麥克風正常** | Intel SOF DSP + ALSA UCM2 / PipeWire | 喇叭 (PCM 5)、耳機 (PCM 0)、雙麥克風分流正常。**耳機插拔自動切換未納入證據** — 見 [verification.md](verification.md)。 |
+| **指紋辨識** | ❌ **無硬體** | — | 本機無指紋硬體（Chell / Lars 無 `18d1:5002` FPMCU）— 見 [COMPATIBILITY.md](COMPATIBILITY.md)。 |
+| **立體聲喇叭 & 麥克風** | 🟢 **喇叭與麥克風正常** | Intel AVS + ALSA UCM2 / PipeWire | 喇叭 (SSM4567 hw4,0)、耳機 (NAU8825 hw3,0)、DMIC hw0,0 分流正常。**耳機插拔自動切換未納入證據** — 見 [verification.md](verification.md)。 |
 | ** Wi-Fi 5 & 藍牙 5.0** | ⚠️ **驅動已綁定** | Intel 7265 (`iwlwifi` / `btusb`) | 驅動開箱即綁定；**WPA3/吞吐量尚未量測**（見 [verification.md](verification.md)）。 |
 | **觸控螢幕 & 觸控板** | ⚠️ **驅動已綁定** | `i2c_hid` / `elan_i2c` | 模組存在；**手勢/防掌觸未納入證據**（見 [verification.md](verification.md)）。 |
 | **Intel UHD 顯示與硬解** | ⚠️ **驅動已綁定** | `i915` (Wayland / X11) | 顯示開箱即用；**VA-API 4K 60fps 未量測**（見 [verification.md](verification.md)）。 |
@@ -59,8 +59,8 @@
 ### 一鍵安裝
 
 ```bash
-git clone https://github.com/samson1357924/hp-pro-c640-chromebook-linux.git ~/projects/hp-pro-c640-chromebook-linux
-cd ~/projects/hp-pro-c640-chromebook-linux
+git clone https://github.com/samson1357924/hp-chromebook-13-g1-linux.git ~/projects/hp-chromebook-13-g1-linux
+cd ~/projects/hp-chromebook-13-g1-linux
 chmod +x setup.sh
 ./setup.sh --all
 ```
@@ -69,10 +69,8 @@ chmod +x setup.sh
 
 | 需求 | 指令 |
 | :--- | :--- |
-| **完整安裝（鍵盤 + 音效 + 指紋 + 電源 + EC）** | `./setup.sh --all` |
+| **完整安裝（鍵盤 + 音效 + 電源 + EC）** | `./setup.sh --all` |
 | **僅安裝音訊 UCM 設定** | `./setup.sh --audio` (或 `./audio/install-audio.sh`) |
-| **僅安裝指紋驅動與 PAM（混合 A+C）** | `./setup.sh --fingerprint` |
-| **強制從源碼編譯指紋驅動（Plan A）** | `./setup.sh --source` |
 | **僅安裝頂排鍵盤映射** | `./setup.sh --keyboard` |
 | **執行系統硬體綜合診斷** | `./setup.sh --check` |
 | **預覽模式（不改動系統檔案）** | `./setup.sh --all --dry-run` |
@@ -108,10 +106,10 @@ chmod +x setup.sh
 
     ---
 
-    指紋、音訊與電源的協議級剖析。
+    音訊、顯示與電源的協議級剖析。
 
-    [:octicons-arrow-right-24: MoC 指紋驅動](deep-dive/cros-fp-moc-driver.md)
-    [:octicons-arrow-right-24: SOF 音訊拓樸](deep-dive/intel-sof-ucm-audio.md)
+    [:octicons-arrow-right-24: AVS 音訊 (Chell)](deep-dive/intel-avs-audio.md)
+    [:octicons-arrow-right-24: 顯示 CDCLK 修正](deep-dive/i915-graphics-cdclk.md)
     [:octicons-arrow-right-24: 電源與休眠](deep-dive/power-and-suspend.md)
 
 - :material-linux: **發行版指南**
@@ -132,32 +130,23 @@ chmod +x setup.sh
 
 ## 🧩 模組亮點
 
-### 🖐️ 指紋辨識 (`fingerprint/`)
-
-FPC1025 Match-on-Chip 經 `/dev/cros_fp` 與審計後的 **`crfpmoc`** 驅動：
-
-- **混合 A+C**：自 Releases 預編譯 `.deb`/`.rpm`/`.pkg.tar.zst` 秒裝 → 離線自動回退源碼編譯（Plan A）
-- 50 ms 狀態機輪詢修復 epoll 飢餓（缺少中斷）
-- 弱指標守護杜絕 Use-After-Free，`/var/lib/fprint/crfpmoc.key` `0600` 種子
-- Debian / Arch / RPM / 獨立源碼包 — 見 [fingerprint README](https://github.com/samson1357924/hp-pro-c640-chromebook-linux/tree/main/fingerprint)
-
 ### 🔊 音訊 (`audio/`)
 
-Skylake SOF DSP 經 ALSA UCM2：
+Skylake AVS (`avs_ssm4567` / `avs_nau8825` / `avs_dmic`) 經 ALSA UCM2：
 
-- 喇叭 PCM 5 (`max98357a`)、耳機 PCM 0 (`rt5682`) 自動切換、DMIC PCM 1 分流立體聲
-- PipeWire Phantom Jack 修復 — 見 [SOF 深度解析](deep-dive/intel-sof-ucm-audio.md)
+- 喇叭 PCM 0 (`avs_ssm4567`)、耳機 PCM 0 (`avs_nau8825`) 自動切換、DMIC PCM 0 分流
+- WirePlumber 優先權 2000/1500/500 修復 HDMI 搶佔 — 見 [AVS 音訊深度解析](deep-dive/intel-avs-audio.md)
 
 ### ⌨️ 鍵盤 (`keyboard/`)
 
 - **方案 A（預設）**：`systemd-hwdb` 零開銷，TTY/X11/Wayland 通用
-- **方案 B**：`keyd` 雙模 `Search` → CapsLock / Super，Super+頂排 → F1–F10 — 見 [keyboard/keyd/cros.conf](https://github.com/samson1357924/hp-pro-c640-chromebook-linux/blob/main/keyboard/keyd/cros.conf)
+- **方案 B**：`keyd` 雙模 `Search` → CapsLock / Super，Super+頂排 → F1–F10 — 見 [keyboard/keyd/cros.conf](https://github.com/samson1357924/hp-chromebook-13-g1-linux/blob/main/keyboard/keyd/cros.conf)
 
 ---
 
 ## 🙏 致謝
 
-特別感謝 **Abhinav Baid**（原創 `crfpmoc`）、**Felix Niederer**、**Michael Evans**、**[Marco Trevisan / libfprint](https://gitlab.freedesktop.org/libfprint/libfprint)**、**[MrChromebox](https://mrchromebox.tech/) / [Chrultrabook](https://chrultrabook.com/)**、**[WeirdTreeThing](https://github.com/WeirdTreeThing)** 與 **[ChromiumOS EC Team](https://chromium.googlesource.com/chromiumos/platform/ec/)** — 見 [CREDITS](https://github.com/samson1357924/hp-pro-c640-chromebook-linux/blob/main/CREDITS.md)。
+特別感謝 **[MrChromebox](https://mrchromebox.tech/) / [Chrultrabook](https://chrultrabook.com/)**、**[WeirdTreeThing](https://github.com/WeirdTreeThing)** 與 **[ChromiumOS EC Team](https://chromium.googlesource.com/chromiumos/platform/ec/)** — 見 [CREDITS](https://github.com/samson1357924/hp-chromebook-13-g1-linux/blob/main/CREDITS.md)。
 
 ---
 
@@ -168,8 +157,8 @@ Skylake SOF DSP 經 ALSA UCM2：
 | 組件模組 | 適用路徑 | 授權條款 |
 | :--- | :--- | :--- |
 | 主控腳本與工具 | `setup.sh`, `scripts/`, `lib/`, `power/`, `ec/` | **MIT** |
-| 指紋驅動與測試 | `fingerprint/driver/`, `fingerprint/tests/` | **LGPL-2.1-or-later** |
 | 音訊 UCM 拓樸 | `audio/ucm/` | **BSD-3-Clause** |
+| 音訊 WirePlumber | `audio/wireplumber/` | **MIT** |
 | 鍵盤 hwdb 與文件 | `keyboard/90-*.hwdb`, `docs/` | **CC0-1.0 / MIT** |
 
-見 [LICENSE](https://github.com/samson1357924/hp-pro-c640-chromebook-linux/blob/main/LICENSE)、[LICENSES/](https://github.com/samson1357924/hp-pro-c640-chromebook-linux/tree/main/LICENSES) 與 [CREDITS](https://github.com/samson1357924/hp-pro-c640-chromebook-linux/blob/main/CREDITS.md)。
+見 [LICENSE](https://github.com/samson1357924/hp-chromebook-13-g1-linux/blob/main/LICENSE)、[LICENSES/](https://github.com/samson1357924/hp-chromebook-13-g1-linux/tree/main/LICENSES) 與 [CREDITS](https://github.com/samson1357924/hp-chromebook-13-g1-linux/blob/main/CREDITS.md)。

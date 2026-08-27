@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 MD022 MD031 MD032 MD037 MD038 -->
+
 # 🛠️ Troubleshooting & Pitfall Guide (HP Chromebook 13 G1 - chell)
 
 > **First install**: If the USB installer shows black screen, see [PITFALL-01: Safe Graphics / nomodeset](pitfalls/01-safe-graphics-nomodeset.md) - you must select **Ubuntu (safe graphics)** or add `nomodeset` via GRUB `e`.

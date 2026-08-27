@@ -7,8 +7,8 @@ Applies to: **openSUSE Tumbleweed**, **openSUSE Leap 15.x**.
 ## 1. Quick Automated Installation
 
 ```bash
-git clone https://github.com/samson1357924/hp-pro-c640-chromebook-linux.git
-cd hp-pro-c640-chromebook-linux
+git clone https://github.com/samson1357924/hp-chromebook-13-g1-linux.git
+cd hp-chromebook-13-g1-linux
 chmod +x setup.sh
 ./setup.sh --all
 ```

@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 -->
+
 # 🔊 Audio - HP Chromebook 13 G1 (CHELL, AVS)
 
 Chell 使用 **Intel AVS** (`snd_soc_avs`) 而非 SOF。獨立多卡架構：

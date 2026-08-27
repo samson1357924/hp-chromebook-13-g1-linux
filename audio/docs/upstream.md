@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 -->
+
 # Upstream Status & Contributor Actions (Chell AVS)
 
 ## 1. Platform

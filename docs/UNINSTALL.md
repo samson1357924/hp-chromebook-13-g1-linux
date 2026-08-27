@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 MD022 MD031 MD032 MD037 -->
+
 # 🔄 Uninstallation & Rollback Guide (chell)
 
 All files installed via `setup.sh` are backed up to `/var/backups/cros-enablement/` with manifest.

@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 -->
+
 # Audio Diagnostics SOP (Chell AVS)
 
 ## 1. Prerequisites

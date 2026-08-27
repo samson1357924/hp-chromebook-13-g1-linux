@@ -175,6 +175,27 @@ get_fingerprint_runtime_deps() {
     esac
 }
 
+# Chell AVS audio dependencies (for CI distro-matrix verification)
+get_audio_build_deps() {
+    case "$DISTRO_FAMILY" in
+        debian)
+            echo "alsa-ucm-conf alsa-utils"
+            ;;
+        fedora)
+            echo "alsa-ucm alsa-utils"
+            ;;
+        arch)
+            echo "alsa-ucm-conf alsa-utils"
+            ;;
+        suse)
+            echo "alsa-ucm-conf alsa-utils"
+            ;;
+        *)
+            echo "alsa-ucm-conf alsa-utils"
+            ;;
+    esac
+}
+
 # Return user session UID and username
 get_real_user() {
     if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then

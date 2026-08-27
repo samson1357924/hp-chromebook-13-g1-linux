@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 -->
+
 # ❄️ NixOS Declarative Configuration Guide
 
 NixOS uses an immutable and purely declarative system architecture. Integrate
@@ -5,7 +7,9 @@ the following settings into your `/etc/nixos/configuration.nix` or Nix Flake.
 
 ---
 
-## 1. Complete Hardware Enablement Example (`hp-pro-c640.nix`)
+## 1. Complete Hardware Enablement Example (`hp-chromebook-13-g1.nix` – Chell)
+
+> **Note:** Fingerprint (`fprintd` / `cros_fp`) and SOF sections below are retained for c640 compatibility; Chell (HP Chromebook 13 G1) has no fingerprint hardware – skip steps 3–4 if deploying on Chell.
 
 ```nix
 { config, pkgs, ... }:
@@ -17,7 +21,7 @@ let
   # Nix build sandbox — `postUnpack` cannot see files outside /nix/store),
   # pinned to a repo commit that contains fingerprint/driver/.
   overlaySrc = builtins.fetchGit {
-    url = "https://github.com/samson1357924/hp-pro-c640-chromebook-linux";
+    url = "https://github.com/samson1357924/hp-chromebook-13-g1-linux";
     rev = "648a4d08fe6bf7128c515b8097217d9612356b6a";
   };
   libfprint-crfpmoc = pkgs.libfprint.overrideAttrs (old: {

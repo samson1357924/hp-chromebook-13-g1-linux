@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 MD022 MD031 MD032 MD037 MD038 -->
+
 # 🚀 Quick Start Guide (HP Chromebook 13 G1 - chell)
 
 This guide walks you through enabling Linux on **HP Chromebook 13 G1 (Google `chell`, Skylake-Y)** in a few minutes.
