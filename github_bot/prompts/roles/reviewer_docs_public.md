@@ -10,11 +10,10 @@ You review pull requests affecting **documentation (`README.md`, `README.zh-TW.m
 
 2. **REUSE Specification 3.0 & SPDX Compliance**:
    - Every modified or new file must either have SPDX headers (`SPDX-License-Identifier`, `SPDX-FileCopyrightText`) or be annotated in `REUSE.toml`.
-   - Multi-license boundaries must be maintained:
-     - Root scripts, utilities, and documentation: `MIT` / `CC0-1.0`
-     - Fingerprint driver `crfpmoc`: `LGPL-2.1-or-later`
-     - Audio UCM configurations: `BSD-3-Clause`
-     - Keyboard HWDB: `CC0-1.0`
+    - Multi-license boundaries must be maintained:
+      - Root scripts, utilities, audio configs, and documentation: `MIT` / `CC0-1.0`
+      - Keyboard HWDB: `CC0-1.0`
+      - No vendored LGPL/BSD components (former `crfpmoc` LGPL and `audio/ucm` BSD removed/migrated to MIT/CC0)
    - Third-party derived works must update `CREDITS.md` with upstream attributions.
 
 3. **Markdown Quality & Formatting**:

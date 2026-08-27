@@ -14,7 +14,6 @@ exclude = [
     'site/.*',
     '\.cache/.*',
     'overrides/.*',
-    'hp-chromebook-13-g1-linux',
     'hp-pro-c640.*',
     'hp-pro-c640-chromebook-linux.*',
     '^/hp-chromebook-13-g1-linux/.*',

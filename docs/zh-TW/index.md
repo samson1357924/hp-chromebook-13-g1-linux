@@ -157,7 +157,6 @@ Skylake AVS (`avs_ssm4567` / `avs_nau8825` / `avs_dmic`) 經 ALSA UCM2：
 | 組件模組 | 適用路徑 | 授權條款 |
 | :--- | :--- | :--- |
 | 主控腳本與工具 | `setup.sh`, `scripts/`, `lib/`, `power/`, `ec/` | **MIT** |
-| 音訊 UCM 拓樸 | `audio/ucm/` | **BSD-3-Clause** |
 | 音訊 WirePlumber | `audio/wireplumber/` | **MIT** |
 | 鍵盤 hwdb 與文件 | `keyboard/90-*.hwdb`, `docs/` | **CC0-1.0 / MIT** |
 

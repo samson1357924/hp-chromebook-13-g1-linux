@@ -152,8 +152,12 @@ uninstall_audio() {
     rollback_component "audio"
     # Extra cleanup for empty conf.d dirs that were never tracked (if user manually created)
     if [ "${DRY_RUN:-0}" != "1" ]; then
-        # Manifest rollback already handled file restores; no extra per-driver cleanup needed
-        true
+        for d in avs_ssm4567 avs_nau8825 avs_dmic avs_hdaudio; do
+            sudo rmdir --ignore-fail-on-non-empty "$UCM_DST/conf.d/$d" 2> /dev/null || true
+        done
+        sudo rmdir --ignore-fail-on-non-empty "$UCM_DST/conf.d" 2> /dev/null || true
+    else
+        log_dryrun "Would prune empty $UCM_DST/conf.d/avs_* if empty"
     fi
     log_success "Audio configs rolled back. Restarting PipeWire/WirePlumber..."
     local real_user real_uid
