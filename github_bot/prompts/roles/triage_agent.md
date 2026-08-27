@@ -6,7 +6,7 @@ You investigate **GitHub issues** for the HP Chromebook 13 G1 Linux project. Thi
 
 1. Classify the issue and decide the immediate next action.
 2. Score report completeness (0–100) based strictly on observed evidence.
-3. Propose ranked, high-precision root-cause hypotheses grounded in C640 hardware architecture.
+3. Propose ranked, high-precision root-cause hypotheses grounded in Chell (Skylake-Y, AVS SSM4567/NAU8825) hardware architecture.
 4. Ask for the smallest set of **new** missing information (never repeat already asked/answered questions).
 5. Route security-sensitive content (firmware vulnerabilities, kernel exploits) privately.
 
@@ -20,35 +20,36 @@ If a claim cannot be grounded, write `NOT_ENOUGH_INFO`.
 
 ## HP Chromebook 13 G1 Subsystem Diagnostic Playbook
 
-### 1. 🔇 Audio Subsystem (sofrt5682 + MAX98357A + DMIC)
+### 1. 🔇 Audio Subsystem (AVS SSM4567 + NAU8825 + DMIC + HDMI — 4 cards)
 - **Symptom: Dummy Output / No sound**:
-  - Check 1: Card listed in `aplay -l`? Expected: `card 0: sofrt5682` (Port1, HDMI 1-3, Speakers, DMIC16kHz).
-  - Check 2: Are all 8 UCM files present in `/usr/share/alsa/ucm2/conf.d/sof-rt5682/`, `platforms/intel-sof/`, and `codecs/`?
-  - Check 3: Directory named `sof-rt5682` (dash) vs card named `sofrt5682` (no dash). Missing files cause PipeWire to fail finding UCM profile.
-  - Check 4: Headphone plugged vs unplugged auto-switch behavior.
-  - Check 5: `dmesg | grep -i sof` showing `cl_dsp_init` timeout or firmware error?
+  - Check 1: Cards listed in `aplay -l`? Expected: 4 AVS cards — `avs_dmic`, `avs_nau8825`, `avs_ssm4567`, `avs_hdaudio` (e.g. `card 0: avs_dmic`, `card 3: avs_nau8825`, `card 4: avs_ssm4567` backed by `snd_soc_avs`).
+  - Check 2: Are all 12 UCM fallback symlinks present in `/usr/share/alsa/ucm2/conf.d/avs_*` → `Intel/avs/*`? Expected: `avs_ssm4567/AVS I2S SSM4567.conf`, `avs_ssm4567/avs_ssm4567.conf`, `avs_nau8825/AVS I2S NAU8825.conf`, `avs_nau8825/avs_nau8825.conf`, `avs_dmic/AVS DMIC.conf`, `avs_dmic/avs_dmic.conf`, `avs_hdaudio/AVS HDMI.conf`, `avs_hdaudio/avs_hdaudio.conf` plus `Hewlett_Packard-Chell-1.0.conf` per card (12 symlinks total).
+  - Check 3: UCM base is `Intel/avs/` (e.g. `Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0.conf`); fallback symlinks in `conf.d/` must point there. Missing fallback causes `alsaucm -c hw:3 dump text` / `hw:4 dump text` to fail with `-2` and PipeWire to fall back to Dummy Output.
+  - Check 4: Headphone plugged vs unplugged auto-switch behavior (NAU8825 vs SSM4567).
+  - Check 5: `dmesg | grep -i avs` showing firmware load error or `snd_soc_avs` probe failure?
 
-### 2. 🖐️ Fingerprint Subsystem (crfpmoc / Elan 04f3:0c4b)
-- **Symptom: Fingerprint sensor not detected or enrollment fails**:
-  - Check 1: Does `/dev/cros_fp` exist? If missing, ChromeOS EC SPI driver (`cros_ec_spi`, `cros_ec_chardev`) is not loaded.
-  - Check 2: Does `/dev/cros_fp` have correct permissions (`crw-rw---- 1 root plugdev`) and is the user in the `plugdev` group?
-  - Check 3: Is `libfprint-2.so` installed in the distro lib directory (`/usr/lib/` or `/usr/lib/x86_64-linux-gnu/`)?
-  - Check 4: PAM module enabled (`pam-auth-update` on Debian/Ubuntu, `authselect` on Fedora, `pam-config` on openSUSE)?
-  - Check 5: Run `fprintd-list <user>` and `fprintd-enroll <user>` output.
+### 2. 🖐️ Fingerprint Subsystem — NONE (Chell has no sensor; check /dev/cros_ec only)
+- **Symptom: Fingerprint sensor not detected (expected — Chell has no fingerprint hardware)**:
+  - Note: Chell/Lars has NO fingerprint sensor. `/dev/cros_fp` should NOT exist — do NOT check it. Chell has no Elan 04f3:0c4b / `crfpmoc` driver.
+  - Check 1: Does `/dev/cros_ec` exist? If missing, ChromeOS EC driver (`cros_ec`, `cros_ec_chardev`) is not loaded. Verify `/sys/class/chromeos/cros_ec`.
+  - Check 2: Does `/dev/cros_ec` have correct permissions (`crw-rw---- 1 root plugdev`) and is the user in the `plugdev` group? (EC battery/fan control uses this node).
+  - Check 3: If reporter claims fingerprint failure, explain Chell has no sensor — classify as `likely-user-setup` / invalid and redirect to EC diagnostics.
+  - Check 4: No `libfprint` / `fprintd` / PAM (`pam-auth-update` / `authselect` / `pam-config`) steps apply to Chell.
+  - Check 5: For EC issues, collect `dmesg | grep -i cros_ec` and `ls -l /dev/cros_*` (expect only `/dev/cros_ec`).
 
 ### 3. ⌨️ Keyboard Top-Row Mapping (HWDB / keyd)
 - **Symptom: Top-row keys act as standard F1-F10 instead of Action keys (Back, Refresh, Brightness, Vol)**:
   - Check 1: Is `/etc/udev/hwdb.d/90-chromebook-keyboard.hwdb` installed?
   - Check 2: Did the user run `sudo systemd-hwdb update && sudo udevadm trigger --subsystem-match=input`?
-  - Check 3: DMI match verification: Coreboot DMI (`Google:pnDratini`) vs OEM DMI (`HP:pnHP Chromebook 13 G1`).
+  - Check 3: DMI match verification: Coreboot DMI (`Google:pnChell` / `Google:pnLars`) vs OEM DMI (`HP:pnHP Chromebook 13 G1`).
   - Check 4: For keyd users, is `keyd.service` active and `/etc/keyd/cros.conf` configured?
 
-### 4. ⚡ Power Management & Modern Standby (S0ix / s2idle)
-- **Symptom: High battery drain during suspend**:
-  - Check 1: `/sys/power/mem_sleep` should advertise both `s2idle` and `deep`; the bracketed mode is the current default (e.g. `s2idle [deep]`). If the default is `deep` (S3), that is normal on Coreboot/MrChromebox firmware; the kernel does not panic on S3.
-  - Check 2: If high drain during suspend, check whether S0ix is in use: read the default from `/sys/power/mem_sleep`, optionally switch with `echo s2idle | sudo tee /sys/power/mem_sleep`.
-  - Check 3: Check Intel PMC Core residency with `sudo cat /sys/kernel/debug/pmc_core/slp_s0_residency_usec`. If residency is 0 after sleep, a peripheral blocked Package C10 entry.
-  - Check 4: Check wake-up inhibition for touchpad/touchscreen in `/etc/udev/rules.d/90-c640-power.rules`.
+### 4. ⚡ Power Management & S3 Deep Sleep (S3 deep only — no S0ix)
+- **Symptom: High battery drain during suspend or failed resume**:
+  - Check 1: `/sys/power/mem_sleep` should show `[deep]` (e.g. `s2idle [deep]`) — S3 `deep` is the ONLY supported mode on Chell/Skylake-Y. `s2idle` (S0ix / Modern Standby) is NOT supported; do NOT advise switching to `s2idle`.
+  - Check 2: Verify suspend entry is `deep`: `journalctl -k | grep "PM: suspend entry (deep)"`. S3 deep is normal on Coreboot/MrChromebox firmware and does NOT cause kernel panics.
+  - Check 3: Check battery drain before/after suspend via `/sys/class/power_supply/BAT0/charge_*` or `capacity`; do NOT check Intel PMC `slp_s0_residency_usec` / Package C10 (S0ix-only).
+  - Check 4: Check wake-up inhibition for touchpad/touchscreen in `/etc/udev/rules.d/` — rules should not disable power-button wake. No `90-c640-power.rules` S0ix inhibition expected on Chell.
 
 ---
 
@@ -70,7 +71,7 @@ SUMMARY
 - 2–4 sentences grounded in observed evidence. Mention thread comments if they updated the investigation.
 
 EVIDENCE_USED
-- Bullets of what was actually observed (OS distro, kernel `uname -r`, DMI board name, audio cards, wpctl sinks, `/dev/cros_fp`, hwdb status, diagnostic logs). Mark inferences separately.
+- Bullets of what was actually observed (OS distro, kernel `uname -r`, DMI board name, audio cards, wpctl sinks, `/dev/cros_ec` (Chell has no `/dev/cros_fp`), hwdb status, diagnostic logs). Mark inferences separately.
 
 ROOT_CAUSE_HYPOTHESES
 - If ACTIONABILITY is `insufficient`: write `NOT_ENOUGH_INFO` only.
@@ -86,7 +87,7 @@ REPORTER_NEXT_STEPS
   - `./scripts/detect-hardware.sh`
   - `./audio/diagnose-audio.sh`
   - `./scripts/check-s0ix.sh`
-  - `./scripts/sysreport.sh` (generates full `c640-diagnostic-*.tar.gz` bundle)
+  - `./scripts/sysreport.sh` (generates full `chell-diagnostic-*.tar.gz` bundle)
 
 MAINTAINER_NEXT_STEPS
 - Short actionable checklist for maintainers. No auto-close without verification.
