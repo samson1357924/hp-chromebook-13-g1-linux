@@ -4,6 +4,9 @@
 
 # 🛠️ 疑難排解與避坑 FAQ (Troubleshooting & Pitfall Guide)
 
+> [!CAUTION]
+> **指紋章節適用性**：§5–§8、§13 為 HP Pro c640 (Dratini) 歷史殘留，**HP Chromebook 13 G1 (Chell) 無指紋硬體**（見 [COMPATIBILITY.md](COMPATIBILITY.md)），請忽略；僅作 c640 交叉參考。Chell 相關章節為 §1–§4、§9–15。
+
 本文整理了在 **HP Chromebook 13 G1 (Google `chell`)** 安裝與使用 Linux 時
 最常遇到的十五大問題與根本解決之道。
 
@@ -47,7 +50,7 @@
 
 ---
 
-## 🖐️ 指紋辨識問題 (Fingerprint)
+## 🖐️ 指紋辨識問題 (Fingerprint) — c640 專屬，Chell 不適用
 
 ### 5. 執行 `fprintd-enroll` 提示 `/dev/cros_fp: Permission denied`
 
@@ -169,7 +172,7 @@
 
 ### 12. 蓋上螢幕筆電不會休眠
 
-* **解決方法**：確認 `/etc/systemd/logind.conf.d/99-hp-c640-lid.conf`
+* **解決方法**：確認 `/etc/systemd/logind.conf.d/99-hp-chell-lid.conf`
   （由 `./power/install-power.sh` 安裝）或 `/etc/systemd/logind.conf` 中設定：
 
   ```ini
@@ -278,8 +281,8 @@
 
   ```bash
   ./power/install-power.sh   # 或手動：
-  sudo install -D -m 0644 power/modprobe.d/99-hp-c640-power.conf \
-      /etc/modprobe.d/99-hp-c640-power.conf
+   sudo install -D -m 0644 power/modprobe.d/99-hp-chell-power.conf \
+      /etc/modprobe.d/99-hp-chell-power.conf
   sudo update-initramfs -u
   sudo systemctl reboot
   ```
@@ -298,7 +301,7 @@
 * **症狀**：下達 `ectool chargecontrol normal 80 90` 出現 `ERROR: Old EC doesn't support sustainer`，
   或是系統在重開機、S3 休眠喚醒後充超過 90%。
 * **根本原因**：
-  1. HP Chromebook 13 G1 (Dratini) 搭載 ChromeOS EC v1 韌體 (`chell_v2.0.2851`)。EC v1 僅支援硬體狀態切換
+  1. HP Chromebook 13 G1 (Chell) 搭載 ChromeOS EC v1 韌體 (`chell_v1.9.425`)。EC v1 僅支援硬體狀態切換
      (`normal`, `idle`, `discharge`)，韌體內部不支援自動維持百分比區間的 Sustainer 演算法。
   2. 在 S3 休眠期間或剛開機時，缺乏喚醒鉤子與開機提早啟動會留下暫態空窗，導致短暫以預設 normal 模式充電。
 * **解決方案**：

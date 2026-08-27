@@ -15,40 +15,60 @@ check_dmi_board() {
     local board_name="Unknown"
     local product_name="Unknown"
     local sys_vendor="Unknown"
+    local product_family="Unknown"
 
     if [ -f /sys/class/dmi/id/board_name ]; then
-        board_name="$(cat /sys/class/dmi/id/board_name 2> /dev/null || echo 'Unknown')"
+        board_name="$(cat /sys/class/dmi/id/board_name 2> /dev/null | tr -d '\r\n' | xargs)"
+        [ -z "$board_name" ] && board_name="Unknown"
     fi
     if [ -f /sys/class/dmi/id/product_name ]; then
-        product_name="$(cat /sys/class/dmi/id/product_name 2> /dev/null || echo 'Unknown')"
+        product_name="$(cat /sys/class/dmi/id/product_name 2> /dev/null | tr -d '\r\n' | xargs)"
+        [ -z "$product_name" ] && product_name="Unknown"
     fi
     if [ -f /sys/class/dmi/id/sys_vendor ]; then
-        sys_vendor="$(cat /sys/class/dmi/id/sys_vendor 2> /dev/null || echo 'Unknown')"
+        sys_vendor="$(cat /sys/class/dmi/id/sys_vendor 2> /dev/null | tr -d '\r\n' | xargs)"
+        [ -z "$sys_vendor" ] && sys_vendor="Unknown"
+    fi
+    if [ -f /sys/class/dmi/id/product_family ]; then
+        product_family="$(cat /sys/class/dmi/id/product_family 2> /dev/null | tr -d '\r\n' | xargs)"
+        [ -z "$product_family" ] && product_family="Unknown"
     fi
 
     log_info "Detected Hardware:"
     log_info "  - Vendor:  $sys_vendor"
     log_info "  - Product: $product_name"
     log_info "  - Board:   $board_name"
+    log_info "  - Family:  $product_family"
 
-    # Chell / Glados / Lars family detection (case-insensitive)
-    local board_lc product_lc
+    # Chell / Lars / Glados family detection (case-insensitive, trimmed)
+    # Only Skylake-Y Lars/Glados family is valid for Chell; Hatch/CometLake
+    # (dratini/jinlon) is intentionally NOT matched to avoid cross-generation AVS mis-deployment.
+    local board_lc product_lc family_lc
     board_lc=$(echo "$board_name" | tr '[:upper:]' '[:lower:]')
     product_lc=$(echo "$product_name" | tr '[:upper:]' '[:lower:]')
+    family_lc=$(echo "$product_family" | tr '[:upper:]' '[:lower:]')
     case "$board_lc" in
-        *dratini* | *chell* | *jinlon* | *hatch* | *glados* | *lars*)
+        *chell* | *lars* | *glados*)
             log_success "Target Chromebook board ($board_name) matches HP Chromebook 13 G1 / Chell platform."
             return 0
             ;;
         *)
             case "$product_lc" in
-                *dratini* | *chell* | *hp*chromebook*13*g1* | *hp*pro*c640* | *hatch* | *glados* | *lars*)
+                *chell* | *hp*chromebook*13*g1* | *lars* | *glados*)
                     log_success "Target device product ($product_name) matches HP Chromebook 13 G1."
                     return 0
                     ;;
                 *)
-                    log_warn "Board '$board_name' / Product '$product_name' is not Chell/Hatch. Generic Chromebook compatibility logic will be applied."
-                    return 1
+                    case "$family_lc" in
+                        *glados* | *lars*)
+                            log_success "Target device family ($product_family) matches Chell Lars/Glados platform."
+                            return 0
+                            ;;
+                        *)
+                            log_warn "Board '$board_name' / Product '$product_name' is not Chell/Lars. Generic Chromebook compatibility logic will be applied."
+                            return 1
+                            ;;
+                    esac
                     ;;
             esac
             ;;

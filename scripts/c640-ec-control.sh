@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
-# scripts/c640-ec-control.sh - ChromeOS EC Control Utility for HP Chromebook 13 G1 (Dratini)
+# scripts/c640-ec-control.sh - ChromeOS EC Control Utility for HP Chromebook 13 G1 (Chell)
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -8,7 +8,7 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Resolve lib dir for both layouts:
 #   repo/dev:   <repo>/lib
-#   installed:  /usr/local/lib/c640-ec (deployed by ec/install-ec.sh)
+#   installed:  /usr/local/lib/c640-ec (deployed by ec/install-ec.sh, legacy c640 prefix kept for backward compat)
 LIB_DIR=""
 for cand in "$ROOT_DIR/lib" "/usr/local/lib/c640-ec"; do
     if [ -f "$cand/logger.sh" ] && [ -f "$cand/syscheck.sh" ]; then
@@ -190,7 +190,7 @@ daemon_battery_limit() {
     }
     trap cleanup_daemon SIGTERM SIGINT
 
-    log_info "Starting c640 battery protection daemon (Limit: $pct%)..."
+    log_info "Starting Chell battery protection daemon (Limit: $pct%)..."
     while true; do
         eval_battery_limit "$pct" || true
         sleep 30

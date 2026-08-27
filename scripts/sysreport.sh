@@ -56,9 +56,16 @@ log_info "Collecting system information into temporary folder: $REPORT_DIR..."
 
 # 1. Hardware & DMI
 mkdir -p "$REPORT_DIR/hardware"
+cat /sys/class/dmi/id/board_name > "$REPORT_DIR/hardware/dmi_board" 2> /dev/null || true
 cat /sys/class/dmi/id/product_name > "$REPORT_DIR/hardware/dmi_product" 2> /dev/null || true
 cat /sys/class/dmi/id/product_family > "$REPORT_DIR/hardware/dmi_family" 2> /dev/null || true
+cat /sys/class/dmi/id/sys_vendor > "$REPORT_DIR/hardware/dmi_vendor" 2> /dev/null || true
+cat /sys/class/dmi/id/board_vendor > "$REPORT_DIR/hardware/dmi_board_vendor" 2> /dev/null || true
 cat /sys/class/dmi/id/bios_version > "$REPORT_DIR/hardware/bios_version" 2> /dev/null || true
+cat /sys/class/dmi/id/bios_vendor > "$REPORT_DIR/hardware/bios_vendor" 2> /dev/null || true
+cat /sys/class/dmi/id/bios_date > "$REPORT_DIR/hardware/bios_date" 2> /dev/null || true
+cat /sys/class/dmi/id/modalias > "$REPORT_DIR/hardware/dmi_modalias" 2> /dev/null || true
+cat /sys/class/dmi/id/uevent > "$REPORT_DIR/hardware/dmi_uevent" 2> /dev/null || true
 lspci -nnk > "$REPORT_DIR/hardware/lspci.txt" 2> /dev/null || true
 lsusb -tv > "$REPORT_DIR/hardware/lsusb.txt" 2> /dev/null || true
 
