@@ -107,10 +107,14 @@ class GitHubAPIClient:
 
     def get_issue_comments(self, issue_number: int) -> list[dict[str, Any]]:
         # Paginate to avoid missing marker beyond first 30 comments
+        # Fallback to no-pagination if per_page query returns empty (API quirk)
         all_comments: list[dict[str, Any]] = []
         page = 1
         while True:
             batch = self._request(f"issues/{issue_number}/comments?per_page=100&page={page}") or []
+            if not batch and page == 1:
+                # Fallback: some tokens / API versions ignore query string
+                batch = self._request(f"issues/{issue_number}/comments") or []
             if not batch:
                 break
             all_comments.extend(batch)
@@ -127,6 +131,7 @@ class GitHubAPIClient:
         """
         bot_login = self._resolve_bot_login()
         comments = self.get_issue_comments(issue_number)
+        print(f"[Sticky] Fetched {len(comments)} comments for issue #{issue_number}, bot_login={bot_login}, marker={marker}")
         # Strict match: marker + author (when identity is known)
         if bot_login:
             for c in comments:
@@ -141,6 +146,7 @@ class GitHubAPIClient:
         # Fallback: marker-only, patch the most recent matching comment (covers
         # identity-resolution failures and prevents duplicate spam)
         matching = [c for c in comments if marker in c.get("body", "")]
+        print(f"[Sticky] Found {len(matching)} matching comments by marker fallback")
         if matching:
             # Patch the latest matching comment to keep history tidy
             latest = matching[-1]
