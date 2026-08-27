@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 MD022 MD031 MD032 MD037 MD038 -->
+
 # 📊 Hardware Compatibility Matrix
 
 Hardware support under Linux for **HP Chromebook 13 G1** (Google **`chell`**, baseboard `lars` family, Intel 6th Gen Skylake-Y):

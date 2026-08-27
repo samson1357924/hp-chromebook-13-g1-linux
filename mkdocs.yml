@@ -8,7 +8,7 @@ site_url: https://samson1357924.github.io/hp-chromebook-13-g1-linux/
 repo_url: https://github.com/samson1357924/hp-chromebook-13-g1-linux
 repo_name: samson1357924/hp-chromebook-13-g1-linux
 edit_uri: edit/main/docs/
-copyright: Copyright &copy; 2026 Samson — REUSE 3.0 (MIT / LGPL-2.1-or-later / BSD-3-Clause / CC0-1.0)
+copyright: Copyright &copy; 2026 Samson — REUSE 3.0 (MIT / CC0-1.0)
 
 theme:
   name: material
@@ -77,8 +77,8 @@ plugins:
                 - Troubleshooting: TROUBLESHOOTING.md
                 - Uninstall: UNINSTALL.md
             - Deep Dive:
-                - MoC Fingerprint Driver: deep-dive/cros-fp-moc-driver.md
-                - SOF Audio Topology: deep-dive/intel-sof-ucm-audio.md
+                - AVS Audio (Chell): deep-dive/intel-avs-audio.md
+                - Graphics CDCLK Fix: deep-dive/i915-graphics-cdclk.md
                 - Power & Suspend: deep-dive/power-and-suspend.md
             - Distros:
                 - Ubuntu / Debian: distros/ubuntu-debian.md
@@ -100,8 +100,8 @@ plugins:
                 - 疑難排解: TROUBLESHOOTING.md
                 - 解除安裝: UNINSTALL.md
             - 深度解析:
-                - MoC 指紋驅動: deep-dive/cros-fp-moc-driver.md
-                - SOF 音訊拓樸: deep-dive/intel-sof-ucm-audio.md
+                - AVS 音訊 (Chell): deep-dive/intel-avs-audio.md
+                - 顯示 CDCLK 修正: deep-dive/i915-graphics-cdclk.md
                 - 電源與休眠: deep-dive/power-and-suspend.md
             - 發行版指南:
                 - Ubuntu / Debian: distros/ubuntu-debian.md
@@ -163,8 +163,8 @@ nav: # fallback for non-i18n builds
       - Troubleshooting: TROUBLESHOOTING.md
       - Uninstall: UNINSTALL.md
   - Deep Dive:
-      - MoC Fingerprint Driver: deep-dive/cros-fp-moc-driver.md
-      - SOF Audio Topology: deep-dive/intel-sof-ucm-audio.md
+      - AVS Audio (Chell): deep-dive/intel-avs-audio.md
+      - Graphics CDCLK Fix: deep-dive/i915-graphics-cdclk.md
       - Power & Suspend: deep-dive/power-and-suspend.md
   - Distros:
       - Ubuntu / Debian: distros/ubuntu-debian.md

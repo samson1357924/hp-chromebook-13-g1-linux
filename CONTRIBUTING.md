@@ -8,7 +8,9 @@ Thank you for your interest in improving hardware support for the HP Chromebook 
 
 ## 🛠️ Development & Testing
 
-### 1. Fingerprint Driver (`crfpmoc`)
+### 1. Fingerprint Driver (`crfpmoc`) — *Not applicable to Chell*
+
+> **Chell (HP Chromebook 13 G1) has no fingerprint hardware.** This section is retained for legacy `c640` compatibility only.
 
 * **Unit Tests**: Compile and run the standalone unit tests:
 
@@ -34,40 +36,34 @@ Thank you for your interest in improving hardware support for the HP Chromebook 
 
 * Ensure all HWDB properties start with a **single leading space** and match proper DMI strings (`cat /sys/class/dmi/id/product_name`).
 
-### 3. Audio (ALSA UCM for sofrt5682)
+### 3. Audio (ALSA / AVS for Chell)
 
-#### 3.1 UCM update source
+Chell uses **Intel AVS** (`avs_ssm4567` Speakers, `avs_nau8825` Headphones, `avs_dmic` Mic, `avs_hdaudio` HDMI) — **not** SOF `sofrt5682`. See [audio/README.md](audio/README.md) and [audio/ucm/README.md](audio/ucm/README.md).
 
-* Upstream new UCM: `standalone` branch of
-  [WeirdTreeThing/alsa-ucm-conf-cros](https://github.com/WeirdTreeThing/alsa-ucm-conf-cros)
-  (maintains the sof-rt5682 profiles).
-* This repo mirrors them in [audio/ucm/](audio/ucm/README.md). Rule: **upstream
-  first, mirror second**; unpin the mirror after upstream
-  [PR #832](https://github.com/alsa-project/alsa-ucm-conf/pull/832) merges.
+#### 3.1 UCM source
 
-#### 3.2 md5 verification flow
+* Upstream AVS UCM is in `alsa-ucm-conf` (`Intel/avs/`). This repo **does not mirror** UCM; `audio/install-audio.sh` **patches** distro UCM: creates `conf.d/avs_*/AVS I2S *.conf` fallbacks and fixes `hw:${CardId},0` index.
+* Rule: **upstream first, patch second**; when upstream adds fallbacks, the patch becomes no-op.
 
-* Compare the 8 files against the vendored commit (`diff -r` / `md5sum`, see
-  [audio/ucm/README.md](audio/ucm/README.md)), then install:
+#### 3.2 Verification flow
 
-  ```bash
-  sudo cp -r audio/ucm/ucm2/* /usr/share/alsa/ucm2/
-  sudo alsactl init
-  systemctl --user restart wireplumber
-  ```
+```bash
+sudo ./audio/install-audio.sh --install   # patches UCM, deploys 50-avs-chell.conf, unmutes DSP
+./audio/diagnose-audio.sh                  # 6-dimension check
+alsaucm -c hw:4 dump text | grep Verb.HiFi # should show HiFi
+speaker-test -D plughw:4,0 -c2 -l1          # speakers (must be plughw + -c2)
+```
 
-* Failure trap: the UCM directory is `sof-rt5682` (dash) while the ALSA card is
-  `sofrt5682` (no dash) — see [root-cause.md](audio/docs/root-cause.md#6-pitfalls).
+* Pitfall: `hw:4,0` only accepts 2ch; mono `aplay -D hw:4,0` fails — use `plughw:4,0`.
+* WirePlumber priority: `50-avs-chell.conf` (2000 Headphones > 1500 Speakers > 500 HDMI).
 
-#### 3.3 spa-acp-tool testing
+#### 3.3 Diagnostics
 
-* A/B comparison commands (`use-ucm=false` / `true`) are in
-  [diagnostics.md](audio/docs/diagnostics.md#24-spa-acp-tool--the-ab-probe-main-tool).
+See [audio/docs/diagnostics.md](audio/docs/diagnostics.md) for `wpctl`/`pw-dump`/`alsaucm`/`amixer name='DSP Volume'` SOP.
 
-#### 3.4 Upstream correspondence
+#### 3.4 Upstream
 
-* All changes should first target upstream (PR #832, work item #5428); this
-  repo's mirror is for verification and reporting only, not forked development.
+* Track `alsa-ucm-conf` AVS updates and kernel `CONFIG_SND_SOC_INTEL_AVS`. See [audio/docs/upstream.md](audio/docs/upstream.md).
 
 ### 4. Documentation & GitHub Pages
 
@@ -75,7 +71,7 @@ Thank you for your interest in improving hardware support for the HP Chromebook 
 
   ```bash
   pip install -r requirements-docs.txt
-  mkdocs serve        # http://127.0.0.1:8000/hp-pro-c640-chromebook-linux/
+  mkdocs serve        # http://127.0.0.1:8000/hp-chromebook-13-g1-linux/
   mkdocs build --strict --site-dir site  # strict: broken links/nav fail
   ```
 

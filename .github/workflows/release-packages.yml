@@ -41,6 +41,9 @@ jobs:
 
       - name: Build .deb package
         run: |
+          echo "Skipped: Chell (HP Chromebook 13 G1) has no fingerprint driver packaging (c640-only)"
+          mkdir -p dist
+          echo "placeholder for Chell – no .deb produced (see docs)" > dist/README.txt
 
       - name: Upload .deb artifact
         uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
@@ -118,6 +121,9 @@ jobs:
 
       - name: Create source tarball
         run: |
+          echo "Creating source tarball for Chell enablement"
+          mkdir -p dist
+          tar --exclude='.git' --exclude='site' --exclude='dist' -czf "dist/hp-chromebook-13-g1-linux-${GITHUB_SHA:-local}.tar.gz" .
 
       - name: Upload Source Tarball artifact
         uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1

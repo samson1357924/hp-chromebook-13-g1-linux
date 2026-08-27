@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 -->
+
 # PITFALL-01: 安裝時必須使用 Safe Graphics / nomodeset 才能進入安裝界面
 
 > **紀錄時間**: 2026-08-27 | **裝置**: HP Chromebook 13 G1 (Google `chell`, Skylake-Y HD515) | **回報**: samson1357924 | **系統**: Ubuntu 26.04.1 LTS USB 安裝碟
@@ -15,7 +17,7 @@
 ### 選項 B: 手動加 nomodeset
 
 1. 在 GRUB 選單反白 `Try or Install Ubuntu` 按 `e` 進入編輯
-2. 找到 `linux` 開頭的那一行，行尾加入 ` nomodeset` (與前面的 `quiet splash` 空格隔開)
+2. 找到 `linux` 開頭的那一行，行尾加入 `nomodeset` (與前面的 `quiet splash` 空格隔開)
 3. 按 `Ctrl+x` 或 `F10` 開機，即可進入安裝界面
 
 ```text

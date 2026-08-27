@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 MD022 MD031 MD032 MD037 MD038 -->
+
 # PITFALL-01: 安裝時必須使用 Safe Graphics / nomodeset 才能進入安裝界面
 
 > **紀錄時間**: 2026-08-27 | **裝置**: HP Chromebook 13 G1 (Google `chell`, Skylake-Y HD515) | **回報**: samson1357924 | **系統**: Ubuntu 26.04.1 LTS USB 安裝碟

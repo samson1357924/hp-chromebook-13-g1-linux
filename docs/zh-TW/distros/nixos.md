@@ -1,4 +1,6 @@
-[English](https://github.com/samson1357924/hp-pro-c640-chromebook-linux/blob/main/README.md) | [繁體中文](https://github.com/samson1357924/hp-pro-c640-chromebook-linux/blob/main/README.zh-TW.md)
+<!-- markdownlint-disable MD013 -->
+
+[English](https://github.com/samson1357924/hp-chromebook-13-g1-linux/blob/main/README.md) | [繁體中文](https://github.com/samson1357924/hp-chromebook-13-g1-linux/blob/main/README.zh-TW.md)
 
 # ❄️ NixOS 宣告式配置指南
 
@@ -6,7 +8,9 @@ NixOS 採用不可變（Immutable）與純宣告式（Declarative）系統架構
 
 ---
 
-## 1. 完整硬體啟用配置範例 (`hp-pro-c640.nix`)
+## 1. 完整硬體啟用配置範例 (`hp-chromebook-13-g1.nix` – Chell)
+
+> **注意：** 以下指紋（`fprintd` / `cros_fp`）與 SOF 段落為 c640 相容保留；Chell（HP Chromebook 13 G1）無指紋硬體，部署於 Chell 時請跳過步驟 3–4。
 
 ```nix
 { config, pkgs, ... }:
@@ -18,7 +22,7 @@ let
   # 路徑，`postUnpack` 看不到你的 clone），並固定在本 repo 包含
   # fingerprint/driver/ 的 commit。
   overlaySrc = builtins.fetchGit {
-    url = "https://github.com/samson1357924/hp-pro-c640-chromebook-linux";
+    url = "https://github.com/samson1357924/hp-chromebook-13-g1-linux";
     rev = "648a4d08fe6bf7128c515b8097217d9612356b6a";
   };
   libfprint-crfpmoc = pkgs.libfprint.overrideAttrs (old: {

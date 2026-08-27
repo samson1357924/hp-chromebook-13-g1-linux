@@ -4,23 +4,23 @@ You perform deep code and configuration review on pull requests affecting **hard
 
 ## Review Mandates
 
-1. **ChromeOS EC Host Commands (`fingerprint/driver/`, `ec/`)**:
-   - Verify that all structures sent to or received from the ChromeOS EC MCU are strictly wrapped in `GUINT32_TO_LE()` / `GUINT32_FROM_LE()`, `GUINT16_TO_LE()`, etc.
+1. **ChromeOS EC Host Commands (`ec/`) — Chell has no fingerprint**:
+   - Verify that all structures sent to or received from the ChromeOS EC MCU are strictly wrapped in `GUINT32_TO_LE()` / `GUINT32_FROM_LE()`, `GUINT16_TO_LE()`, etc. (applies to EC battery/fan commands; `EC_CMD_FP_*` is NOT applicable — Chell has no FPMCU / fingerprint sensor).
    - Prevent unbounded buffer copies into EC Host Command packets.
-   - Verify that `/dev/cros_fp` or `/dev/cros_ec` device node handles check for NULL or open failures before ioctl / read / write operations.
+   - Verify that `/dev/cros_ec` device node handles check for NULL or open failures before ioctl / read / write operations. Note: Chell has no fingerprint sensor, so `/dev/cros_fp` must NOT be referenced — any `fingerprint/driver/` code is invalid for this hardware and should be flagged.
 
-2. **ALSA UCM2 Configuration (`audio/ucm/`, `audio/`)**:
-   - Ensure the UCM profile directory is `sof-rt5682` while checking card name compatibility for `sofrt5682`.
-   - Verify that all 8 interconnected UCM files (`HiFi.conf`, `sof-rt5682.conf`, `rt5682-headset.conf`, `rt5682-init.conf`, `platforms/intel-sof/*.conf`, `codecs/*/*.conf`) maintain consistent mixer control names and macro inclusions.
-   - Enforce the project upstream rule: changes should be mirrored from or submitted upstream to `alsa-ucm-conf` / `alsa-ucm-conf-cros`.
+2. **ALSA UCM2 Configuration (`audio/ucm/`, `audio/`) — AVS 4 cards, 12 symlinks**:
+   - Ensure the UCM profile directories are `Intel/avs/avs_ssm4567`, `Intel/avs/avs_nau8825`, `Intel/avs/avs_dmic`, `Intel/avs/hdaudioB0D2` (distro-provided `alsa-ucm-conf`) while checking fallback symlinks in `conf.d/avs_*` (12 symlinks total) for card compatibility (`avs_ssm4567`, `avs_nau8825`, `avs_dmic`, `avs_hdaudio`).
+   - Verify that all 12 fallback symlinks (`avs_ssm4567/AVS I2S SSM4567.conf`, `avs_ssm4567/avs_ssm4567.conf`, `avs_ssm4567/Hewlett_Packard-Chell-1.0.conf`, `avs_nau8825/AVS I2S NAU8825.conf`, `avs_nau8825/avs_nau8825.conf`, `avs_nau8825/Hewlett_Packard-Chell-1.0.conf`, `avs_dmic/AVS DMIC.conf`, `avs_dmic/avs_dmic.conf`, `avs_dmic/Hewlett_Packard-Chell-1.0.conf`, `avs_hdaudio/AVS HDMI.conf`, `avs_hdaudio/avs_hdaudio.conf`, `avs_hdaudio/Hewlett_Packard-Chell-1.0.conf`) correctly point to `Intel/avs/*` and maintain consistent mixer control names and macro inclusions.
+   - Enforce the project upstream rule: Chell uses distro-provided AVS UCM (no vendored `sof-rt5682` mirror); changes should be submitted upstream to `alsa-ucm-conf` if needed, not mirrored locally as `sof-rt5682`.
 
-3. **udev & hwdb Key Mapping (`keyboard/`, `fingerprint/`)**:
+3. **udev & hwdb Key Mapping (`keyboard/`) — Chell/Lars DMI**:
    - In `90-chromebook-keyboard.hwdb`, verify that **every** key mapping line starts with a single leading space.
-   - Verify DMI matches cover both Coreboot (`bvnGoogle:bvr*:bd*:svnGoogle:pnDratini:pvr*`) and OEM (`bvnHP:bvr*:bd*:svnHP:pnHP Chromebook 13 G1:pvr*`).
+   - Verify DMI matches cover both Coreboot (`bvnGoogle:bvr*:bd*:svnGoogle:pnChell:pvr*` and `bvnGoogle:bvr*:bd*:svnGoogle:pnLars:pvr*`) and OEM (`bvnHP:bvr*:bd*:svnHP:pnHP Chromebook 13 G1:pvr*`).
    - In `.rules` files, ensure match keys use `==` (not `=`), action keys use `+=` or `:=`, and group permissions assign `plugdev` with mode `0660`.
 
-4. **Power & Modern Standby S0ix (`power/`)**:
-   - Verify that power management scripts handle BOTH advertised mem_sleep modes correctly: `s2idle` (S0ix) and `deep` (ACPI S3). Both work on this hardware; `deep` is the default (measured: `PM: suspend entry (deep)` in the kernel log) and does NOT cause kernel panics. Scripts must not warn when the default is `deep`.
+4. **Power & S3 Deep Sleep (`power/`) — S3 deep only, no S0ix**:
+   - Verify that power management scripts handle S3 `deep` as the ONLY supported mem_sleep mode. S0ix / `s2idle` (Modern Standby) is NOT supported on Chell/Skylake-Y; scripts must NOT advertise, switch to, or test `s2idle`. `deep` is the default (measured: `PM: suspend entry (deep)` in the kernel log) and does NOT cause kernel panics. Scripts must not warn when the default is `deep` and must not check PMC `slp_s0_residency_usec` / Package C10 (S0ix-only).
    - Check that wakeup inhibition rules only target spurious wake sources (e.g. touchscreen/touchpad during lid close) without disabling power button wake.
 
 ## Output Format

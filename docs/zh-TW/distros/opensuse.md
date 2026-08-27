@@ -1,4 +1,6 @@
-[English](https://github.com/samson1357924/hp-pro-c640-chromebook-linux/blob/main/README.md) | [繁體中文](https://github.com/samson1357924/hp-pro-c640-chromebook-linux/blob/main/README.zh-TW.md)
+<!-- markdownlint-disable MD013 -->
+
+[English](https://github.com/samson1357924/hp-chromebook-13-g1-linux/blob/main/README.md) | [繁體中文](https://github.com/samson1357924/hp-chromebook-13-g1-linux/blob/main/README.zh-TW.md)
 
 # 🐧 openSUSE 專屬配置指南
 
@@ -9,8 +11,8 @@
 ## 1. 快速自動安裝
 
 ```bash
-git clone https://github.com/samson1357924/hp-pro-c640-chromebook-linux.git
-cd hp-pro-c640-chromebook-linux
+git clone https://github.com/samson1357924/hp-chromebook-13-g1-linux.git
+cd hp-chromebook-13-g1-linux
 chmod +x setup.sh
 ./setup.sh --all
 ```

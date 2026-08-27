@@ -38,37 +38,9 @@ path = ".github/**"
 SPDX-FileCopyrightText = "2026 Samson <https://github.com/samson1357924>"
 SPDX-License-Identifier = "MIT"
 
-# License text copy at repository root (GNU LGPL v2.1 text)
-[[annotations]]
-path = "COPYING.LGPL"
-SPDX-FileCopyrightText = "1989, 1991 Free Software Foundation, Inc."
-SPDX-License-Identifier = "LGPL-2.1-or-later"
-
-# Fingerprint driver & unit tests (derived from upstream libfprint/crfpmoc)
-[[annotations]]
-path = [
-]
-SPDX-FileCopyrightText = [
-    "2024 Abhinav Baid <abhinavbaid@gmail.com>",
-    "2024 Felix Niederer <felix@niederer.dev>",
-    "2025 Michael Evans <mike.67.442@gmail.com>",
-    "2026 Marco Trevisan (Treviño) <mail@3v1n0.net>",
-    "2026 Samson <https://github.com/samson1357924>"
-]
-SPDX-License-Identifier = "LGPL-2.1-or-later"
-
-# Audio UCM Configurations
-[[annotations]]
-path = "audio/ucm/**"
-SPDX-FileCopyrightText = [
-    "2019 Advanced Linux Sound Architecture (ALSA) project",
-    "2022-2026 WeirdTreeThing <https://github.com/WeirdTreeThing>"
-]
-SPDX-License-Identifier = "BSD-3-Clause"
-
 # Documentation and Guides
 [[annotations]]
-path = ["docs/**", "**/*.md"]
+path = ["docs/**", "**/*.md", "*.md"]
 SPDX-FileCopyrightText = "2026 Samson <https://github.com/samson1357924>"
 SPDX-License-Identifier = "MIT"
 
@@ -96,14 +68,8 @@ path = [
 SPDX-FileCopyrightText = "2026 Samson <https://github.com/samson1357924>"
 SPDX-License-Identifier = "CC0-1.0"
 
-# Fingerprint driver overlay tarball (binary archive of LGPL-2.1-or-later
-# crfpmoc driver sources; PKGBUILD and spec carry their own SPDX headers)
+# Audio WirePlumber profile for AVS Chell topology
 [[annotations]]
-SPDX-FileCopyrightText = [
-    "2024 Abhinav Baid <abhinavbaid@gmail.com>",
-    "2024 Felix Niederer <felix@niederer.dev>",
-    "2025 Michael Evans <mike.67.442@gmail.com>",
-    "2026 Marco Trevisan (Treviño) <mail@3v1n0.net>",
-    "2026 Samson <https://github.com/samson1357924>"
-]
-SPDX-License-Identifier = "LGPL-2.1-or-later"
+path = "audio/wireplumber/**"
+SPDX-FileCopyrightText = "2026 Samson <https://github.com/samson1357924>"
+SPDX-License-Identifier = "MIT"

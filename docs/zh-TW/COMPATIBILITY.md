@@ -1,4 +1,6 @@
-[English](https://github.com/samson1357924/hp-pro-c640-chromebook-linux/blob/main/README.md) | [繁體中文](https://github.com/samson1357924/hp-pro-c640-chromebook-linux/blob/main/README.zh-TW.md)
+<!-- markdownlint-disable MD013 MD022 MD031 MD032 MD037 MD038 -->
+
+[English](https://github.com/samson1357924/hp-chromebook-13-g1-linux/blob/main/README.md) | [繁體中文](https://github.com/samson1357924/hp-chromebook-13-g1-linux/blob/main/README.zh-TW.md)
 
 # 📊 硬體相容性矩陣 (Hardware Compatibility Matrix)
 

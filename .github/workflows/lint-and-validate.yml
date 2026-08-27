@@ -83,10 +83,13 @@ jobs:
           echo "All hwdb key mappings verified across Coreboot & OEM DMI strings!"
 
       - name: Validate udev Rules Syntax
+        shell: bash
         run: |
           if udevadm --help | grep -q "verify"; then
+            echo "Using udevadm verify for rule validation"
+            find . -type f -name "*.rules" -print0 | xargs -0 -r -I{} sh -c 'echo "Verifying {}"; udevadm verify "{}" || { echo "Error: {} failed udevadm verify" >&2; exit 1; }'
           else
-            while IFS= read -r rule_file; do
+            while IFS= read -r -d '' rule_file; do
               echo "Checking $rule_file"
               grep -E 'KERNEL=[^=]' "$rule_file" && { echo "Error: KERNEL must use == for match"; exit 1; }
               grep -E 'SUBSYSTEM=[^=]' "$rule_file" && { echo "Error: SUBSYSTEM must use == for match"; exit 1; }

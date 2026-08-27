@@ -1,116 +1,100 @@
-# Audio Diagnostics SOP (sofrt5682)
+<!-- markdownlint-disable MD013 -->
+
+# Audio Diagnostics SOP (Chell AVS)
 
 ## 1. Prerequisites
 
-* `pipewire`, `wireplumber`, `pipewire-tools` (for `spa-acp-tool`), `alsa-utils`.
-* Run from a **normal login session** (the `--sim-no-ucm` mode restarts your
-  PipeWire session).
+* `alsa-utils`, `pipewire`, `wireplumber`, `pipewire-tools`
+* Run from normal login session (not via `sudo -i` without XDG_RUNTIME_DIR)
 
 ## 2. Toolchain
 
 ### 2.1 `wpctl status`
 
-Sinks/sources, the `*` default marker, and profile state.
+Sinks/sources, `*` default marker. Focus on **Sinks section**:
 
 ```bash
-wpctl status
+wpctl status | sed -n '/Sinks:/,/Sources:/p'
 ```
 
-### 2.2 `wpctl inspect` / `wpctl get-volume`
+### 2.2 `pw-dump` + priority
 
 ```bash
-wpctl inspect @DEFAULT_AUDIO_SINK@
-wpctl get-volume @DEFAULT_AUDIO_SINK@
+pw-dump | python3 -c "
+import json,sys
+data=json.load(sys.stdin)
+for n in data:
+  if n.get('type')=='PipeWire:Interface:Node':
+    props=n.get('info',{}).get('props',{})
+    if 'media.class' in props:
+        print(props.get('node.name'), props.get('priority.session'), props.get('node.description'))
+"
+# Expect: avs_ssm4567 1500 Built-in Speakers (SSM4567)
+#         avs_dmic 1500 Internal Digital Mic
 ```
 
-### 2.3 `pw-dump`
-
-Node objects carry `api.alsa.*` props and the active profile:
+### 2.3 `alsaucm dump`
 
 ```bash
-pw-dump | jq -r '.. | objects | select(.type? == "PipeWire:Interface:Node") |
-  .info.props | "\(.["node.name"]) profile=\(.["api.alsa.profile"])"'
+alsaucm -c hw:4 dump text | head -n 40  # Speakers
+alsaucm -c hw:3 dump text | head -n 40  # Headphones
+alsaucm -c hw:0 dump text | head -n 40  # DMIC
+# Expect: Verb.HiFi with PlaybackPCM hw:${CardId},0
 ```
 
-### 2.4 `spa-acp-tool` — the A/B probe (main tool)
+### 2.4 `amixer` (use name= syntax)
 
 ```bash
-export ACP_PATHS_DIR=/usr/share/alsa-card-profile/mixer/paths
-export ACP_PROFILES_DIR=/usr/share/alsa-card-profile/mixer/profile-sets
-spa-acp-tool -vvvv -p 'api.alsa.path=hw:0' -p 'api.alsa.use-ucm=false' list-profiles
-spa-acp-tool -vvvv -p 'api.alsa.path=hw:0' -p 'api.alsa.use-ucm=true'  list-profiles
+amixer -c4 cget name='DSP Volume'        # should be non-zero (0..2147483647)
+amixer -c4 cset name='DSP Volume' 1500000000
+amixer -c3 cget name='Headphone Jack'    # jack detection
 ```
 
-Expected difference:
-
-* `use-ucm=false` → only `off` (and `output:stereo-fallback available: no`).
-* `use-ucm=true` → HiFi family profiles with `available: yes`.
-
-`-vvvv` is required for profile/port probe debug (levels below 4 silence it).
-
-### 2.5 `alsa-info.sh`
+### 2.5 `aplay` / `speaker-test`
 
 ```bash
-wget https://www.alsa-project.org/alsa-info.sh && sh alsa-info.sh
+speaker-test -D plughw:4,0 -c2 -l1        # speakers (must be plughw + -c2)
+speaker-test -D plughw:3,0 -c2 -l1        # headphones
+arecord -D plughw:0,0 -d2 -f S16_LE -r48000 -c2 /tmp/mic.wav && aplay -D plughw:4,0 /tmp/mic.wav
 ```
 
-Upload and attach the URL when reporting issues.
-
-### 2.6 `alsactl init`
+### 2.6 `dmesg` (AVS)
 
 ```bash
-sudo alsactl init
+sudo dmesg | grep -i -E "avs|ssm4567|nau8825"
 ```
 
-Shows UCM2 load errors (the no-UCM case has a characteristic error).
+## 3. Checklist (5+ = high-confidence AVS issue)
 
-### 2.7 `journalctl -u wireplumber`
+* [ ] `wpctl status Sinks:` shows `* HDMI` not `* Speakers (SSM4567)`
+* [ ] `pw-dump` priority.session `1000` for both HDMI and Speakers (should be 1500/500)
+* [ ] `alsaucm -c hw:4 dump text` reports `-2` ENOENT
+* [ ] `ls -l /usr/share/alsa/ucm2/conf.d/avs_ssm4567/AVS I2S SSM4567.conf` missing
+* [ ] `amixer -c4 cget name='DSP Volume'` shows `values=0`
+* [ ] `/etc/wireplumber/wireplumber.conf.d/50-avs-chell.conf` missing
 
-```bash
-journalctl --user -u wireplumber -e
-# keywords: ACP, "Failed to enumerate profiles", profile warnings
-```
+## 4. Test Matrix (priority × UCM × jack)
 
-### 2.8 `dmesg`
+| Scenario | wpctl Sinks | UCM verb | Playback |
+|---|---|---|---|
+| No fix, no headphone | `* HDMI` (priority tie) | fallback | HDMI silent, speakers silent (muted + wrong sink) |
+| No fix, headphone in | `* HDMI` still | fallback | headphone may work via hw:3,0 direct but not via PipeWire |
+| Fixed, no headphone | `* Built-in Speakers (SSM4567)` priority 1500 | HiFi | speakers ok |
+| Fixed, headphone in | `* Headphones (NAU8825)` priority 2000 auto-switch | HiFi | headphones ok, speakers auto-muted via priority |
 
-```bash
-dmesg | grep -i -E 'sof|rt5682|max98357'
-```
-
-Clean output rules out firmware/kernel (see [root-cause.md §4](root-cause.md)).
-
-## 3. "No UCM" Checklist
-
-* [ ] `wpctl status` shows no physical sink; profile = `off`
-* [ ] ACP enumeration warnings in WirePlumber logs
-* [ ] `spa-acp-tool` with `use-ucm=false` lists only `off`
-* [ ] `strace` shows `conf.d/sof-rt5682/*.conf` ENOENT
-* [ ] `/usr/share/alsa/ucm2/conf.d/sof-rt5682/` missing the 8 files
-* [ ] `dmesg` clean (firmware ruled out)
-
-5+ checks → high-confidence "missing UCM" diagnosis.
-
-## 4. Test Matrix (UCM × headphone)
-
-| Scenario | wpctl profile | Available ports | Playback | Verdict |
-| :--- | :--- | :--- | :--- | :--- |
-| No UCM, no headphone | off / Dummy Output | none | fails | bug reproduced |
-| No UCM, headphone in | off (or headphone available) | headphone only | headphone ok, speakers silent | fallback limit ([root-cause §8](root-cause.md)) |
-| UCM, no headphone | HiFi / Speaker | Speaker | speakers ok | fixed |
-| UCM, headphone in | HiFi (auto-switch) | Speaker→Headphone | auto-switch works | fixed |
-
-Note: to test speakers directly use `speaker-test -D hw:0,5` (PCM5). Testing
-the default sink routes to PCM0 (headphone DAC).
+Note: `speaker-test -D hw:4,0` needs `-c2`; mono wav via `hw` fails, use `plughw`.
 
 ## 5. Quick Fix
 
-1. `./audio/install-audio-ucm.sh` (or manual steps in [audio/README.md](../README.md)).
-2. Verify md5 (see [audio/ucm/README.md](../ucm/README.md)).
-3. `systemctl --user restart wireplumber`.
-4. Re-run the matrix rows 3–4.
+1. `sudo ./audio/install-audio.sh --install`
+2. `sudo alsactl store` (done by installer)
+3. `systemctl --user restart wireplumber pipewire` (done by installer)
+4. Re-run `./audio/diagnose-audio.sh` and `wpctl status Sinks:`
 
 ## 6. Reporting
 
-Paste the checklist result + an `alsa-info.sh` URL into a
-[hardware issue](../../.github/ISSUE_TEMPLATE/hardware_issue.yml) using
-`./audio/diagnose-audio.sh -o /tmp/audio-report.txt`.
+```bash
+./audio/diagnose-audio.sh -o /tmp/audio-report.txt
+cat /tmp/audio-report.txt   # attach to issue
+./scripts/sysreport.sh      # full bundle
+```

@@ -1,127 +1,76 @@
-# Root Cause: Dummy Output on sofrt5682 (HP Chromebook 13 G1)
+<!-- markdownlint-disable MD013 -->
+
+# Root Cause: No Speaker Output on Chell AVS (HP Chromebook 13 G1)
 
 ## 1. TL;DR
 
-* **Symptom**: Settings shows "Dummy Output"; there is no sound at all.
-* **Root cause**: The distro `alsa-ucm-conf` package ships **no UCM configuration
-  for the `sofrt5682` card** → ALSA Card Profile (ACP) falls back to mixer-path
-  probing → every analog output profile is marked `available: no` → WirePlumber
-  can only select the `off` profile → no real sink → Dummy Output.
-* **Evidence chain**: `strace` (UCM file search ENOENT) + `spa-acp-tool` A/B
-  comparison + clean dmesg. Full details below.
+* **Symptom**: No sound from built-in speakers (SSM4567), and often default sink is HDMI (no sound).
+* **Root causes** (3-fold, all verified on Chell `board_name=Chell`, kernel 7.0.0-30, AVS):
+  1. **PipeWire default sink hijacked by HDMI** — `avs_hdaudio` (card 2) and `avs_ssm4567` (card 4) both at `priority 1000` (stereo-fallback). HDMI enumerated first wins, WirePlumber locks it with +30000.
+  2. **UCM fallback missing** — `alsa-lib` only searches `conf.d/${Driver}/${CardLongName}.conf` and `conf.d/${Driver}/${Driver}.conf`; distro ships only `Hewlett_Packard-Chell-1.0.conf` → `alsaucm -c hw:4 dump text` fails `-2`, PipeWire falls back to `stereo-fallback`.
+  3. **DSP Volume 0** — `amixer -c4 cget name='DSP Volume'` range `0..2147483647` is at `0` (mute) after fresh install.
+* **Not firmware**: `dmesg | grep -i avs` clean, `/lib/firmware/intel/avs/skl/dsp_basefw.bin.zst` present, `lsmod` shows `snd_soc_avs*`.
 
 ## 2. Affected Environment
 
-* Sound card: `sofrt5682` (card 0) — Intel SOF DSP + rt5682 headset codec +
-  max98357a speakers.
-* Verified broken on: Ubuntu 26.04 LTS, alsa-ucm-conf 1.2.15.3-1ubuntu1.5,
-  pipewire 1.6.2-1ubuntu1.1, wireplumber 0.5.13-1ubuntu1, kernel 7.0.0-29-generic.
+* Sound: `avs_ssm4567` (Speakers hw:4,0), `avs_nau8825` (Headphones hw:3,0 + Headset Mic), `avs_dmic` (DMIC hw:0,0), `avs_hdaudio` (HDMI hw:2,0-2) — **Intel AVS**, not SOF.
+* OS: Ubuntu 26.04 LTS, pipewire 1.6.2, wireplumber 0.5.13, kernel 7.0.
+* UCM: `/usr/share/alsa/ucm2/Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0.conf` present but `conf.d` fallbacks missing pre-fix.
 
 ## 3. Symptoms
 
-* GUI: "Dummy Output" in sound settings; no real device listed.
-* `wpctl status`: no physical sink; the only available profile is `off`.
-* Audio: speakers **and** headphone silent.
-* `dmesg`: completely clean — firmware loads fine, no `cl_dsp_init` timeout.
-  This is what ruled out the firmware theory.
+* `wpctl status` shows Sinks: `* HDMI` (card 2) rather than `* Speakers (SSM4567)` (card 4); audio goes to HDMI (no speaker sound).
+* `pw-dump` shows `priority.session=1000` for both HDMI and Speakers (tie).
+* `alsaucm -c hw:4 dump text` → `[error.ucm] failed to import hw:4 -2` pre-fix.
+* `amixer -c4 cget name='DSP Volume'` → `values=0` pre-fix.
+* `dmesg` clean — rules out firmware/topology missing.
 
-## 4. Wrong Explanations (excluded — do not revisit)
+## 4. Wrong Explanations (excluded)
 
 | Old theory | Refutation |
-| :--- | :--- |
-| SOF firmware missing | `dmesg \| grep -i sof` shows clean load; `/lib/firmware/intel/sof/` populated; `lsmod \| grep snd_sof` shows modules loaded. |
-| Reinstall `firmware-sof-signed` | No effect — package was present and correct. |
-| PipeWire/WirePlumber config broken | Fresh installs reproduce it; service logs show only ACP profile enumeration warnings. |
+|---|---|
+| SOF firmware missing (`sof-cml.ri`/`firmware-sof-signed`) | Chell uses AVS, not SOF; `lsmod \| grep snd_soc_avs` shows AVS loaded, `snd_sof` only as hda-intel shim |
+| Reinstall `alsa-ucm-conf` fixes it | Distro package correctly ships AVS UCM but lacks `conf.d` fallback symlinks — need `install-audio.sh` patch |
+| Dummy Output (single card `sofrt5682`) | Chell is multi-card AVS; Dummy Output is for SOF single-card, not applicable |
 
 ## 5. The Real Chain
 
-1. ALSA UCM2 card configs live in `/usr/share/alsa/ucm2/conf.d/<card>/`.
-   Ubuntu's `alsa-ucm-conf` has **no `sof-rt5682` directory** (the card name in
-   UCM keeps its dash: `sof-rt5682`).
-2. `alsa-card-profile` (ACP, ported from PulseAudio) probes the card:
-   * **With UCM** → profiles are defined by the UCM use-cases (`EnumProfile`).
-   * **Without UCM** → mixer-path probing: each output profile requires at
-     least one *alive* port (a port whose jack kcontrol reports "plugged" or
-     that needs no jack at all).
-3. **Evidence A — strace shows the failed search**:
+1. **UCM search fails**:
 
    ```bash
-   strace -f -e trace=openat,newfstatat -o /tmp/wp.strace \
-     systemctl --user restart wireplumber
-   grep -E 'sof-rt5682|CardLongName' /tmp/wp.strace | grep ENOENT
-   # openat(.../conf.d/sof-rt5682/driver.conf) = -1 ENOENT
-   # openat(.../conf.d/sof-rt5682/CardLongName.conf) = -1 ENOENT
+   strace -e trace=file alsaucm -c hw:4 dump text 2>&1 | grep -E "conf.d/avs_ssm4567"
+   # access(.../conf.d/avs_ssm4567/AVS I2S SSM4567.conf) = -1 ENOENT
+   # access(.../conf.d/avs_ssm4567/avs_ssm4567.conf) = -1 ENOENT
    ```
 
-4. Mixer-path probing result: only the **Headphone Jack** path survives:
-   * Speaker path: `max98357a` has **no jack detection** → the port needs no
-     kcontrol only if the path is defined as always-present; with the distro
-     paths, the speaker port has no jack kcontrol at all, so it is dropped.
-   * Headphone path survives probing, but the jack is unplugged →
-     `available: no`.
-5. Conclusion: every analog output profile is `available: no` → WirePlumber
-   only has `off` → no sink → upper layers show Dummy Output.
-6. **Evidence B — spa-acp-tool A/B comparison** (same machine, same session):
-
-   ```bash
-   ACP_PATHS_DIR=/usr/share/alsa-card-profile/mixer/paths \
-   ACP_PROFILES_DIR=/usr/share/alsa-card-profile/mixer/profile-sets \
-   spa-acp-tool -p 'api.alsa.use-ucm=false' -c 0 list-profiles
-   # → only "off" / output:stereo-fallback available: no
-   ```
-
-   With `api.alsa.use-ucm=true` (UCM installed):
-   `output:stereo-fallback available: yes` and the HiFi profiles listed.
-7. **Evidence C — clean dmesg** excludes the kernel/firmware layer and locks
-   the fault into the userspace configuration layer.
+2. PipeWire falls back to `stereo-fallback` (no HiFi), both HDMI and Speakers at `1000`.
+3. WirePlumber picks HDMI as default sink (enumeration order + `default.configured.audio.sink` bonus +30000).
+4. Even after UCM fixed, `DSP Volume 0` still mutes speakers — needs `amixer -c4 cset name='DSP Volume' 1500000000` (range is 0..2147483647, `120` would still be mute).
 
 ## 6. Pitfalls
 
-* **alsaucm test trap**: `alsaucm -c sofrt5682` (non-hw mode) does **not** search
-  `conf.d/` — only `-c hw:0` does. Verify with `strace -e openat alsaucm ...`.
-  Don't trust a test tool's behavior until you've verified how it searches.
-* **Card name vs UCM dir**: ALSA card is `sofrt5682` (no dash); the UCM
-  directory is `sof-rt5682`. Mixing them up makes "it's installed!" checks
-  produce false positives.
-* **Silent fallback**: alsa-lib silently ignores missing UCM — nothing in
-  `journalctl` says "UCM missing". Absence of errors ≠ configuration present.
-* **Intel ME**: on a machine with Intel ME disabled, SOF fails with
-  `cl_dsp_init: timeout with rom_status_reg` — a *different* failure mode from
-  this issue; don't conflate the two.
+* **PCM index**: AVS multi-card uses `hw:${CardId},0` per card; old template `hw:${CardId},1` would `ENOENT` even if UCM loaded.
+* **Alsaucm vs UCM**: `alsaucm -c hw:4 dump text` must show `Verb.HiFi`; `alsaucm -c hw:4 dump text | grep PlaybackPCM` should show `hw:${CardId},0`.
+* **plughw vs hw**: `hw:4,0` only accepts 2ch; `aplay -D hw:4,0 Front_Center.wav` (mono) fails `Channels count non available` — use `plughw:4,0` or `speaker-test -c2`.
+* **Per-user WirePlumber shadowing**: `~/.config/wireplumber/wireplumber.conf.d/50-avs-rules.conf` shadows `/etc`; install script removes legacy.
 
-## 7. Lesson: Wrong Direction (force-sof-profile.lua)
+## 7. Fallback Routing Limits (no UCM / no priority fix)
 
-An earlier attempt forced the `stereo-fallback` profile to `available: yes`
-via a WirePlumber Lua hook. It failed for three reasons:
+| Card | PCM | Role |
+|---|---|---|
+| 0 | hw:0,0 | DMIC capture 2ch |
+| 2 | hw:2,0/1/2 | HDMI playback |
+| 3 | hw:3,0 | Headphone playback + Headset capture (JackControl) |
+| 4 | hw:4,0 | Speaker playback |
 
-1. **Routing**: the fallback sink opens `hw:0` = **PCM0** = the *headphone*
-   DAC (rt5682). The physical speakers are on **PCM5** = `max98357a`. Result:
-   speakers silent (and the headphone jack may even produce sound).
-2. **Index semantics**: ACP fallback device indexes are *ordinal* numbers, not
-   ALSA PCM numbers — `hw:0,X` mapping is non-intuitive and easy to get wrong.
-3. **Design**: routing is UCM's job. Bypassing it with a hook is treating the
-   symptom; it also breaks jack auto-switching.
+Without priority fix, HDMI always wins. Without UCM, no `JackControl` binding for headphone auto-switch.
 
-The hook file was removed from this system. Do not reintroduce it.
+## 8. Fix
 
-## 8. Fallback Routing Limits (no UCM)
+```bash
+sudo ./audio/install-audio.sh --install   # creates conf.d fallbacks, fixes PCM, unmutes DSP, deploys 50-avs-chell.conf + 50-disable-suspend.conf
+./audio/diagnose-audio.sh                  # verifies 6 dimensions
+speaker-test -D plughw:4,0 -c2 -l1         # should produce pink noise on both speakers
+```
 
-| ALSA PCM | Physical device |
-| :--- | :--- |
-| 0 | Port1 headphone (rt5682) |
-| 5 | Speakers (max98357a) |
-| 8 | DMIC16kHz (capture) |
-
-Without UCM there is **no automatic routing**: the fallback sink stays on
-PCM0, so `speaker-test -D hw:0,5` works for speakers but nothing switches
-between speaker and headphone.
-
-## 9. Fix
-
-Install the UCM profiles (see [../README.md](../README.md#step-2-install-ucm2-audio-profiles)):
-`./audio/install-audio-ucm.sh`, then `systemctl --user restart wireplumber`.
-
-## 10. References
-
-* [upstream.md](upstream.md) — issue #433, PR #832, RFC #5428, phantom-jack MR.
-* [diagnostics.md](diagnostics.md) — toolchain SOP and the UCM × jack test matrix.
+See [upstream.md](upstream.md) for AVS upstream tracking.

@@ -63,16 +63,18 @@ jobs:
       - name: Dry-Run Coverage (no side effects)
         run: |
           set -euo pipefail
-          ./ec/install-ec.sh --install --dry-run
-          ./ec/install-ec.sh --enable-battery-limit --dry-run
+          chmod +x ec/install-ec.sh ec/systemd/*.sh 2>/dev/null || true
+          bash ec/install-ec.sh --install --dry-run
+          bash ec/install-ec.sh --enable-battery-limit --dry-run
 
       - name: Install EC Tools (real root, simulates target system)
         run: |
           set -euo pipefail
+          chmod +x ec/install-ec.sh ec/systemd/*.sh 2>/dev/null || true
           # Non-root USER exercises the plugdev was_member snapshot path.
           useradd -m smoketest
-          USER=smoketest ./ec/install-ec.sh --install
-          USER=smoketest ./ec/install-ec.sh --enable-battery-limit
+          USER=smoketest bash ec/install-ec.sh --install
+          USER=smoketest bash ec/install-ec.sh --enable-battery-limit
 
       - name: "Assert Installed Layout Is Self-Sufficient (regression: missing libs)"
         run: |
@@ -109,12 +111,14 @@ jobs:
       - name: Assert Repo (Dev) Layout Still Works
         run: |
           set -euo pipefail
+          chmod +x scripts/c640-ec-control.sh 2>/dev/null || true
           ./scripts/c640-ec-control.sh help > /dev/null
 
       - name: Uninstall Round-Trip (manifest rollback)
         run: |
           set -euo pipefail
-          USER=smoketest ./ec/install-ec.sh --uninstall
+          chmod +x ec/install-ec.sh ec/systemd/*.sh 2>/dev/null || true
+          USER=smoketest bash ec/install-ec.sh --uninstall
           test ! -e /usr/local/bin/c640-ec-control
           test ! -e /usr/local/lib/c640-ec/logger.sh
           test ! -e /usr/local/lib/c640-ec/syscheck.sh

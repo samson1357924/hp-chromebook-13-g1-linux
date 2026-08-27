@@ -29,7 +29,7 @@ show_menu() {
     echo "Detected Environment:"
     echo "  - OS:      $DISTRO_NAME ($DISTRO_FAMILY)"
     echo "  - Kernel:  $(uname -r)"
-    echo "  - Board:   $(cat /sys/class/dmi/id/board_name 2>/dev/null || echo chell)"
+    echo "  - Board:   $(cat /sys/class/dmi/id/board_name 2> /dev/null || echo chell)"
     echo "  - User:    $(get_real_user)"
     echo ""
     echo "Select action to perform:"
@@ -128,18 +128,55 @@ run_uninstall() {
 MODE=""
 while [ $# -gt 0 ]; do
     case "$1" in
-        --all | -a | 1) MODE="all"; shift ;;
-        --audio | -u | 2) MODE="audio"; shift ;;
-        --keyboard | -k | --kbd | 3) MODE="keyboard"; shift ;;
-        --power | -p | 4) MODE="power"; shift ;;
-        --graphics | -g | 5) MODE="graphics"; shift ;;
-        --ec) MODE="ec"; shift ;;
-        --check | -c | --status | 6) MODE="check"; shift ;;
-        --sysreport | 7) MODE="sysreport"; shift ;;
-        --uninstall | --rollback | 8) MODE="uninstall"; shift ;;
-        --dry-run | -n) export DRY_RUN=1; shift ;;
-        --help | -h) show_help; exit 0 ;;
-        *) log_error "Unknown option: $1"; show_help; exit 1 ;;
+        --all | -a | 1)
+            MODE="all"
+            shift
+            ;;
+        --audio | -u | 2)
+            MODE="audio"
+            shift
+            ;;
+        --keyboard | -k | --kbd | 3)
+            MODE="keyboard"
+            shift
+            ;;
+        --power | -p | 4)
+            MODE="power"
+            shift
+            ;;
+        --graphics | -g | 5)
+            MODE="graphics"
+            shift
+            ;;
+        --ec)
+            MODE="ec"
+            shift
+            ;;
+        --check | -c | --status | 6)
+            MODE="check"
+            shift
+            ;;
+        --sysreport | 7)
+            MODE="sysreport"
+            shift
+            ;;
+        --uninstall | --rollback | 8)
+            MODE="uninstall"
+            shift
+            ;;
+        --dry-run | -n)
+            export DRY_RUN=1
+            shift
+            ;;
+        --help | -h)
+            show_help
+            exit 0
+            ;;
+        *)
+            log_error "Unknown option: $1"
+            show_help
+            exit 1
+            ;;
     esac
 done
 
@@ -156,8 +193,14 @@ if [ -z "$MODE" ]; then
         6) MODE="check" ;;
         7) MODE="sysreport" ;;
         8) MODE="uninstall" ;;
-        0) echo "Exiting."; exit 0 ;;
-        *) log_error "Invalid choice: $choice"; exit 1 ;;
+        0)
+            echo "Exiting."
+            exit 0
+            ;;
+        *)
+            log_error "Invalid choice: $choice"
+            exit 1
+            ;;
     esac
 fi
 

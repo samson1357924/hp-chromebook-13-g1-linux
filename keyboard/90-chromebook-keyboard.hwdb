@@ -1,9 +1,16 @@
 # SPDX-License-Identifier: CC0-1.0
 # SPDX-FileCopyrightText: 2026 Samson <https://github.com/samson1357924>
 # Key mapping data derived from systemd 60-chromebook-keyboard.hwdb (CC0-1.0)
-# HP Pro c640 Chromebook (Google Dratini / Hatch) Keyboard Top-Row Mapping
-# Matches both standard Google Coreboot DMI strings and OEM HP DMI tables
+# HP Chromebook 13 G1 (Google Chell / Glados) + HP Pro c640 (Dratini) Keyboard Top-Row Mapping
+# Matches Google Coreboot DMI strings and OEM HP DMI tables (Chell first, then legacy Hatch for compatibility)
 
+evdev:atkbd:dmi:bvn*:bvr*:bd*:svnGoogle*:pn*Chell*:pvr*
+evdev:atkbd:dmi:bvn*:bvr*:bd*:svnGoogle*:pn*chell*:pvr*
+evdev:atkbd:dmi:bvn*:bvr*:bd*:svnGoogle*:pn*Glados*:pvr*
+evdev:atkbd:dmi:bvn*:bvr*:bd*:svnGoogle*:pn*glados*:pvr*
+evdev:atkbd:dmi:bvn*:bvr*:bd*:svnGoogle*:pn*Lars*:pvr*
+evdev:atkbd:dmi:bvn*:bvr*:bd*:svnHP*:pn*HP*Chromebook*13*G1*:pvr*
+evdev:atkbd:dmi:bvn*:bvr*:bd*:svnHP*:pn*Chell*:pvr*
 evdev:atkbd:dmi:bvn*:bvr*:bd*:svnGoogle*:pn*Dratini*:pvr*
 evdev:atkbd:dmi:bvn*:bvr*:bd*:svnGoogle*:pn*dratini*:pvr*
 evdev:atkbd:dmi:bvn*:bvr*:bd*:svnGoogle*:pn*Hatch*:pvr*

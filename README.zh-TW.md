@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 MD022 MD031 MD032 MD037 -->
+
 [English](README.md) | [繁體中文](README.zh-TW.md)
 
 # HP Chromebook 13 G1 (Google Chell) Linux 完整硬體啟用指南

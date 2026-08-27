@@ -106,13 +106,34 @@ class GitHubAPIClient:
         return [f.get("filename", "") for f in data if isinstance(f, dict) and f.get("filename")]
 
     def get_issue_comments(self, issue_number: int) -> list[dict[str, Any]]:
-        return self._request(f"issues/{issue_number}/comments") or []
+        # Paginate to avoid missing marker beyond first 30 comments
+        # Fallback to no-pagination if per_page query returns empty (API quirk)
+        all_comments: list[dict[str, Any]] = []
+        page = 1
+        while True:
+            batch = self._request(f"issues/{issue_number}/comments?per_page=100&page={page}") or []
+            if not batch and page == 1:
+                # Fallback: some tokens / API versions ignore query string
+                batch = self._request(f"issues/{issue_number}/comments") or []
+            if not batch:
+                break
+            all_comments.extend(batch)
+            if len(batch) < 100:
+                break
+            page += 1
+        return all_comments
 
     def publish_sticky_comment(self, issue_number: int, body: str, marker: str) -> None:
-        """Find an existing bot comment with the matching marker and update it in-place."""
+        """Find an existing bot comment with the matching marker and update it in-place.
+
+        Prevents spam by editing the previous report instead of posting a new one.
+        Falls back to marker-only search when token identity cannot be resolved.
+        """
         bot_login = self._resolve_bot_login()
+        comments = self.get_issue_comments(issue_number)
+        print(f"[Sticky] Fetched {len(comments)} comments for issue #{issue_number}, bot_login={bot_login}, marker={marker}")
+        # Strict match: marker + author (when identity is known)
         if bot_login:
-            comments = self.get_issue_comments(issue_number)
             for c in comments:
                 c_body = c.get("body", "")
                 c_author = (c.get("user") or {}).get("login", "")
@@ -122,6 +143,18 @@ class GitHubAPIClient:
                         print(f"Updating existing bot comment #{cid} with marker {marker}")
                         self._request(f"issues/comments/{cid}", method="PATCH", data={"body": body})
                         return
+        # Fallback: marker-only, patch the most recent matching comment (covers
+        # identity-resolution failures and prevents duplicate spam)
+        matching = [c for c in comments if marker in c.get("body", "")]
+        print(f"[Sticky] Found {len(matching)} matching comments by marker fallback")
+        if matching:
+            # Patch the latest matching comment to keep history tidy
+            latest = matching[-1]
+            cid = latest.get("id")
+            if cid:
+                print(f"Updating existing comment #{cid} by marker fallback {marker}")
+                self._request(f"issues/comments/{cid}", method="PATCH", data={"body": body})
+                return
 
         print(f"Publishing new comment on issue/PR #{issue_number}")
         self._request(f"issues/{issue_number}/comments", method="POST", data={"body": body})
