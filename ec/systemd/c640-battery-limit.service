@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Samson <https://github.com/samson1357924>
 
 [Unit]
-Description=HP Pro c640 Battery Charge Protection Daemon (90% Limit)
+Description=HP Chromebook 13 G1 (Chell) Battery Charge Protection Daemon (90% Limit)
 After=sysinit.target
 
 [Service]

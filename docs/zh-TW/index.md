@@ -50,7 +50,7 @@
 | **雙 Type-C 輸出與快充** | ⚠️ **充電正常** | USB-PD + DP 1.2 Alt Mode | PD 充電正常；**Type-C 外接螢幕未驗證**（見 [verification.md](verification.md)）。 |
 
 !!! note "最後驗證"
-    **2026-08-23** 於 Ubuntu 26.04 LTS（kernel `7.0.0-29-generic`、PipeWire `1.6.2`、fprintd `1.94.5`、MrChromebox `2606.1`）。證據包 `c640-diagnostic-20260815_152233.tar.gz`（EC 90% 守護服務 + `c640-ec-sleep.sh` + `ectool` 已實機驗證；打包 `1.94.10-2` 中繼資料，驅動未異動）— 見 [verification.md](verification.md) 的重現步驟。
+    **2026-08-23** 於 Ubuntu 26.04 LTS（kernel `7.0.0-29-generic`、PipeWire `1.6.2`、MrChromebox `2606.1`）。證據包 `chell-diagnostic-20260815_152233.tar.gz`（EC 90% 守護服務 + `c640-ec-sleep.sh` + `ectool` 已實機驗證）— 見 [verification.md](verification.md) 的重現步驟。
 
 ---
 

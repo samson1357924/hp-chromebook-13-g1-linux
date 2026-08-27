@@ -105,8 +105,8 @@ install_ec_tools() {
 
     log_section "c640-ec-control installed successfully! 🔋"
     echo "You can now run:"
-    echo "    c640-ec-control status"
-    echo "    c640-ec-control battery-limit 90"
+    echo "    c640-ec-control status            # (legacy name, kept for compatibility)"
+    echo "    c640-ec-control battery-limit 90  # binary retains c640 prefix for backward compat"
 }
 
 enable_battery_service() {

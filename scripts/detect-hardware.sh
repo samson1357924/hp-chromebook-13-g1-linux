@@ -103,7 +103,7 @@ run_diagnostic() {
     log_step 4 6 "Keyboard Top-Row Mapping"
     if [ -f /etc/udev/hwdb.d/90-chromebook-keyboard.hwdb ]; then
         log_success "  90-chromebook-keyboard.hwdb installed"
-        if grep -q "Chell" /etc/udev/hwdb.d/90-chromebook-keyboard.hwdb 2> /dev/null; then
+        if grep -qi "chell" /etc/udev/hwdb.d/90-chromebook-keyboard.hwdb 2> /dev/null; then
             log_success "  hwdb contains Chell DMI match"
         else
             log_warn "  hwdb missing Chell DMI match - update needed"

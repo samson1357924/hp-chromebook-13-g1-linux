@@ -4,35 +4,34 @@
 
 # 📊 硬體相容性矩陣 (Hardware Compatibility Matrix)
 
-HP Chromebook 13 G1 (開發代號：**Google `chell`**，Baseboard：**`hatch`**，Intel 第 10 代 Skylake-U 平台) 在 Linux 下的硬體組件支援狀況如下：
+**HP Chromebook 13 G1**（開發代號：**Google `chell`**，Baseboard：**`lars` family**，Intel 第 6 代 Skylake-Y）在 Linux 下的硬體組件支援狀況如下：
 
 ---
 
-## 💻 組件狀態總覽
+## 💻 組件狀態總覽（本機：chell / m7-6Y75 / HD 515）
 
 | 硬體組件 | 晶片型號 / 規格 | Linux 核心驅動 | 支援狀態 | 備註 / 解決方案 |
 | :--- | :--- | :--- | :---: | :--- |
-| **指紋辨識** | Fingerprint Cards FPC1025 (FPMCU MoC) | `/dev/cros_fp` (`cros_ec_spi`) | 🟢 **正常** | 本專案 `crfpmoc` 驅動 + PAM；鎖定解鎖與 `sudo` **2026-08-19 實機驗證**。 |
-| **內建立體聲喇叭** | Maxim MAX98357A (I2S Amp) | `snd_soc_max98357a` | 🟢 **正常** | 透過 ALSA UCM2 PCM 5 輸出；**實機驗證**（Chromium 播放）。 |
-| **3.5mm 耳機孔** | Realtek RT5682 (I2C) | `snd_soc_rt5682` | ⚠️ **驅動已綁定** | 裝置存在 (PCM 0)；**插拔自動切換未納入證據**。 |
-| **內建數位麥克風** | 2-channel PDM DMIC | `snd_soc_dmic` | 🟢 **正常** | UCM PCM Split 分流為立體聲 Mic 1 與 Mic 2；**實機驗證**。 |
-| ** Wi-Fi 5** | Intel  Wi-Fi 5 7265 (CNVi) | `iwlwifi` | ⚠️ **驅動已綁定** | 開箱即載入；**WPA3 / 吞吐量未量測**。 |
-| **藍牙 5.0** | Intel 7265 Bluetooth | `btusb` / `btintel` | ⚠️ **驅動已綁定** | 控制器存在；**配對 / A2DP 音訊未納入證據**。 |
-| **觸控板** | ELAN I2C Touchpad | `i2c_hid` / `elan_i2c` | ⚠️ **驅動已綁定** | 模組存在；**多指手勢 / 防誤觸未功能測試**。 |
-| **觸控螢幕 (選配)** | Goodix / ELAN / G2Touch | `i2c_hid_acpi` | ⚠️ **驅動已綁定** | 模組存在；**多點觸控 / 手寫筆輸入未功能測試**。 |
-| **GPU / 內顯** | Intel UHD Graphics 620 | `i915` | ⚠️ **驅動已綁定** | 顯示開箱即用；**VA-API 4K 60fps 解碼未量測**。 |
-| **視訊鏡頭** | 720p HD Camera (附隱私蓋) | `uvcvideo` | ⚠️ **驅動已綁定** | 標準 USB UVC 鏡頭；**擷取未測試**。 |
-| **雙 Type-C 輸出** | 2x USB-C 3.2 Gen 1 (PD + DP) | `typec` / `xhci_pci` | ⚠️ **充電正常** | PD 充電節點存在；**DP 1.2 螢幕輸出未驗證**。 |
-| **鍵盤頂排按鍵** | ChromeOS Top-Row Keys | `udev hwdb` / `keyd` | 🟢 **正常** | 映射為標準媒體鍵；**hwdb 已驗證**（背光亮度未測試）。 |
-| **待機休眠** | S0ix Modern Standby + ACPI S3 | `s2idle` + `deep` | 🟢 **S3 盒蓋週期已驗證** | 預設 S3 `deep`；2026-08-18 實測真實盒蓋週期。**按鍵/指紋喚醒未測試**；開蓋後螢幕需按鍵才亮（見 [TROUBLESHOOTING.md §14](TROUBLESHOOTING.md)）。 |
+| **處理器** | Intel Core m7-6Y75（另有 m3-6Y30/m5-6Y57）Skylake-Y 4.5W | `intel_pstate` | 🟢 **正常** | 4 threads, 1.2-3.1GHz, `lscpu` 已驗證 |
+| **GPU / 顯示** | Intel HD Graphics 515 (GT2, 24EU) [8086:191e] | `i915` | ⚠️ **需修復** | 預設 `nomodeset` → `simpledrm`；移除 `nomodeset` 啟用 `i915`。1920×1080 FHD 已測；3200×1800 QHD 變種未在本機測試。 |
+| **立體聲喇叭** | SSM4567 I2S Amp (AVS) | `avs_ssm4567` | 🟢 **正常** | `aplay -l` Card SSM4567, PipeWire sink 正常 |
+| **3.5mm 耳機孔** | Nuvoton NAU8825 (I2C) | `avs_nau8825` | 🟢 **正常** | Card NAU8825, 耳機播放+錄音正常 |
+| **內建數位麥克風** | Digital Mic | `avs_dmic` | 🟢 **正常** | Card DMIC, `arecord -l` 正常 |
+| **Wi-Fi** | Intel 7265 AC [8086:095a] | `iwlwifi` | 🟢 **正常** | `wlp1s0` Wi-Fi 5 AC 已連線 |
+| **藍牙** | Intel 7265 BT `8087:0a2a` | `btusb` | 🟢 **存在** | 藍牙裝置存在 |
+| **觸控板** | ELAN0000:00 I2C | `elan_i2c` / `i2c_hid` | ⚠️ **驅動已綁定** | `ELAN0000:00` + `Synopsys DesignWare` I2C 正常，手勢未驗證 |
+| **視訊鏡頭** | Quanta HP Truevision HD `0408:5060` | `uvcvideo` | 🟢 **存在** | `PipeWire` v4l2 節點 41/48 存在 |
+| **儲存** | eMMC 32GB + HFS256G39 via JMS567 USB | `sdhci` / `xhci` | 🟢 **正常** | SD `9d2b`, 外接 238GB 正常 |
+| **鍵盤頂排** | ChromeOS EC top-row | `cros_ec` + `hwdb`/`keyd` | ⚠️ **需映射** | EC `/dev/cros_ec` 存在，hwdb 與 c640 共用 |
+| **EC / PD** | ChromeOS EC LPC + PD | `cros_ec` / `cros_pd` | 🟢 **存在** | `/dev/cros_ec` + `/dev/cros_pd` 正常 |
+| **待機休眠** | S3 deep | `S3` | 🟢 **可用** | Skylake 僅支援傳統 S3，不支援 S0ix |
+| **指紋辨識** | — | — | ⛔ **無硬體** | G1 無指紋感測器 |
 
 ---
 
-## 🐧 推薦發行版與內核版本需求
+## 🐧 核心與發行版需求
 
-* **推薦 Linux 核心**：Linux Kernel `>= 5.15` (推薦 `>= 6.5` 以獲得最佳 SOF DSP 與 S0ix 功耗表現)。
-* **音效伺服器**：PipeWire `>= 0.3.65` (推薦 PipeWire 1.0+ / WirePlumber 0.4.14+)。
-* **發行版實測狀態**（實際硬體驗證內容請見 [VERIFICATION.md](verification.md)）：
-  * 🟢 **已於實機硬體驗證**：**Ubuntu 26.04 LTS**（kernel `7.0.0-29-generic`、PipeWire `1.6.2`、WirePlumber `0.5.13`、fprintd `1.94.5`）
-  * ⚠️ **僅 CI 建置驗證（無硬體實測）**：Ubuntu 24.04、Fedora 42、Arch Linux
-    （distro-matrix dry-run 與依賴解析），以及打包檢查（Arch `namcap`、Fedora `rpmlint`）
+* **核心**：`>=5.15` 建議 `>=6.5`（Ubuntu 26.04 `7.0.0-14` 正常，但 i915 需移除 nomodeset）
+* **音訊**：PipeWire 1.6.2 + AVS 驅動（`snd_soc_avs`）；無需 SOF UCM（與 c640 不同）
+* **已測試**：Ubuntu 26.04.1 LTS, kernel 7.0.0-14-generic, Wayland, 15Gi RAM
+* **復原映像**：`chell`（透過 `chromeos-recovery` 工具）
