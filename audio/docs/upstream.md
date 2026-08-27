@@ -1,38 +1,32 @@
-# Upstream Status & Contributor Actions (sof-rt5682 UCM)
+# Upstream Status & Contributor Actions (Chell AVS)
 
-## 1. Upstream Tracking
+## 1. Platform
 
-| Track | Content | Status | URL |
-| :--- | :--- | :--- | :--- |
-| alsa-ucm-conf PR #832 | Upstream the 22 UCM files for sof-rt5682 | **closed (withdrawn)** 2026-08-15 — submitted without coordinating with the downstream UCM author first; retry requires prior coordination (see [../upstream/alsa-ucm-conf-pr-832.md](../upstream/alsa-ucm-conf-pr-832.md)) | <https://github.com/alsa-project/alsa-ucm-conf/pull/832> |
-| cros issue #433 | Success report for the downstream UCM | published | <https://github.com/WeirdTreeThing/chromebook-linux-audio/issues/433> |
-| pipewire work item #5428 | RFC: ACP marks all analog profiles `available: no` when no UCM exists | open | <https://gitlab.freedesktop.org/pipewire/pipewire/-/work_items/5428> |
-| pipewire phantom-jack MR | Fix: phantom jacks (ASoC has no phantom jack support) → treat as always-present | **not submitted** — freedesktop fork quota limit blocks creating a personal fork | materials in [../upstream/](../upstream/) |
-
-Archived copies: [audio/upstream/](../upstream/README.md).
+* **Driver**: Intel AVS (`CONFIG_SND_SOC_INTEL_AVS=m`) — in-kernel since 5.18, recommended 6.5+.
+* **Firmware**: `linux-firmware` `/lib/firmware/intel/avs/` + `skl/dsp_basefw.bin.zst` (DSP) + `*-tplg.bin.zst` (topology).
+* **UCM**: `alsa-ucm-conf` ships AVS configs in `Intel/avs/avs_{ssm4567,nau8825,dmic}/` + `hdaudioB0D2/`. This repo does **not** mirror SOF UCM; it patches `conf.d` fallbacks.
 
 ## 2. Known-Good Environment Table
 
-| Environment | alsa-ucm-conf | pipewire | wireplumber | SOF fw | Result |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| Ubuntu 26.04 LTS (this repo, verified 2026-08-15) | 1.2.15.3-1ubuntu1.5 (no sof-rt5682) + repo mirror UCM | 1.6.2-1ubuntu1.1 | 0.5.13-1ubuntu1 | 2:2:0-57864 | working |
-| Ubuntu 26.04 LTS stock | 1.2.15.3-1ubuntu1.5 | 1.6.2-1ubuntu1.1 | 0.5.13-1ubuntu1 | 2:2:0-57864 | Dummy Output |
+| Environment | alsa-ucm-conf | pipewire | wireplumber | AVS fw | Result |
+|---|---|---|---|---|---|
+| Ubuntu 26.04 LTS (this repo, verified 2026-08-27) | 1.2.15 (ships AVS, but conf.d fallbacks added by `install-audio.sh`) + 50-avs-chell.conf | 1.6.2 | 0.5.13 | skl/dsp_basefw.bin.zst | Speakers (SSM4567) + Headphones (NAU8825) + DMIC working |
+| Ubuntu 26.04 stock (no patch) | 1.2.15 (no conf.d fallbacks, no priority) | 1.6.2 | 0.5.13 | same | HDMI hijacks default, DSP 0 mute |
 
 Add rows with tester + date as new versions are validated.
 
-## 3. Contributor Follow-up Checklist
+## 3. Upstream History (for reference)
 
-* [ ] Coordinate with the downstream UCM author (WeirdTreeThing) and agree on
-  attribution/review scope; then retry upstreaming the sof-rt5682 UCM to
-  alsa-ucm-conf (PR #832 was withdrawn 2026-08-15)
-* [ ] Track #5428; report ACP behavior changes across PipeWire releases
-* [ ] Once the freedesktop quota issue is resolved, submit the phantom-jack MR
-  (body: [../upstream/pipewire-mr-5428.md](../upstream/pipewire-mr-5428.md),
-  base master `195dea9`, patch = commit `a459563`)
-* [ ] After UCM upstreaming succeeds: unpin this repo's UCM mirror
-  ([audio/ucm/](../ucm/README.md)) and prefer the distro package
-* [ ] Update the Known-Good table after OS/kernel upgrades
+* Old C640 platform used SOF `sofrt5682` with `WeirdTreeThing/alsa-ucm-conf-cros` mirror — **not applicable to Chell**.
+* Chell AVS support is upstream in kernel and alsa-ucm-conf; this repo's role is **patching gaps** (conf.d symlinks + WirePlumber priority), not forking UCM.
 
-## 4. Related
+## 4. Contributor Checklist
 
-* Root cause: [root-cause.md](root-cause.md) — Diagnostic SOP: [diagnostics.md](diagnostics.md)
+* [ ] Verify `CONFIG_SND_SOC_INTEL_AVS` enabled in distro kernel (`grep AVS /boot/config-$(uname -r)`)
+* [ ] Track `alsa-ucm-conf` AVS updates — when `conf.d` fallbacks are added upstream, `install-audio.sh` patch becomes no-op
+* [ ] Test after OS/kernel upgrades, update Known-Good table
+* [ ] Report AVS topology issues to `alsa-ucm-conf` or kernel `sound/soc/intel/avs`
+
+## 5. Related
+
+* Root cause: [root-cause.md](root-cause.md) — Diagnostics SOP: [diagnostics.md](diagnostics.md) — Install: [../README.md](../README.md)

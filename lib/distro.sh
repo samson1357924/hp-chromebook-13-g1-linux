@@ -128,7 +128,8 @@ install_packages() {
     esac
 }
 
-# Return distro-specific dependencies for building libfprint / crfpmoc
+# Chell has no fingerprint hardware; these helpers are deprecated but kept for compatibility
+# Return distro-specific dependencies for building libfprint / crfpmoc (deprecated for Chell)
 get_fingerprint_build_deps() {
     case "$DISTRO_FAMILY" in
         debian)
@@ -153,7 +154,7 @@ get_fingerprint_build_deps() {
     esac
 }
 
-# Return distro-specific runtime dependencies for libfprint / crfpmoc
+# Deprecated for Chell
 get_fingerprint_runtime_deps() {
     case "$DISTRO_FAMILY" in
         debian)

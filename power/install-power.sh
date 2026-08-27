@@ -98,10 +98,11 @@ install_power() {
             ;;
     esac
 
-    # 2. Deploy TLP configuration
-    log_step 2 4 "Deploying Skylake TLP profile..."
-    local tlp_dst="/etc/tlp.d/99-hp-c640.conf"
-    local tlp_src="$SCRIPT_DIR/tlp/99-hp-c640.conf"
+    # 2. Deploy TLP configuration (Chell / Skylake-Y)
+    log_step 2 4 "Deploying Chell (Skylake-Y) TLP profile..."
+    local tlp_dst="/etc/tlp.d/99-hp-chell.conf"
+    local tlp_src="$SCRIPT_DIR/tlp/99-hp-chell.conf"
+    local tlp_old="/etc/tlp.d/99-hp-c640.conf"
     if [ -f "$tlp_src" ]; then
         backup_file_manifest_aware "$tlp_dst" "power"
         if [ "${DRY_RUN:-0}" = "1" ]; then
@@ -110,29 +111,39 @@ install_power() {
             sudo mkdir -p /etc/tlp.d
             sudo install -D -m 0644 "$tlp_src" "$tlp_dst"
             log_success "Deployed $tlp_dst"
+            # Clean up legacy c640 file if present (migrated to chell)
+            if [ -f "$tlp_old" ] && [ "$tlp_old" != "$tlp_dst" ]; then
+                backup_file_manifest_aware "$tlp_old" "power"
+                sudo rm -f "$tlp_old" 2>/dev/null || true
+                log_info "Removed legacy $tlp_old (migrated to $tlp_dst)"
+            fi
         fi
     fi
 
-    # 3. Deploy i915 / iwlwifi modprobe quirks (anti-blackscreen & ASPM)
+    # 3. Deploy i915 / iwlwifi modprobe quirks (anti-blackscreen & ASPM) - Chell verified enable_psr=0 fbc=0 dc=0
     log_step 3 4 "Deploying GPU & Wi-Fi power quirks (anti-blackscreen & ASPM)..."
-    local modprobe_dst="/etc/modprobe.d/99-hp-c640-power.conf"
-    local modprobe_src="$SCRIPT_DIR/modprobe.d/99-hp-c640-power.conf"
+    local modprobe_dst="/etc/modprobe.d/99-hp-chell-power.conf"
+    local modprobe_src="$SCRIPT_DIR/modprobe.d/99-hp-chell-power.conf"
+    local modprobe_old="/etc/modprobe.d/99-hp-c640-power.conf"
     if [ -f "$modprobe_src" ]; then
         backup_file_manifest_aware "$modprobe_dst" "power"
         if [ "${DRY_RUN:-0}" = "1" ]; then
             log_dryrun "Install -D -m 0644 $modprobe_src -> $modprobe_dst"
         else
-            # NOTE: the shipped config no longer contains the iwlwifi
-            # "d0i3_disable" parameter (removed upstream in kernel 7.0), so
-            # it is safe to deploy as-is on every kernel version.
             sudo install -D -m 0644 "$modprobe_src" "$modprobe_dst"
             log_success "Deployed $modprobe_dst"
+            if [ -f "$modprobe_old" ] && [ "$modprobe_old" != "$modprobe_dst" ]; then
+                backup_file_manifest_aware "$modprobe_old" "power"
+                sudo rm -f "$modprobe_old" 2>/dev/null || true
+                log_info "Removed legacy $modprobe_old"
+            fi
         fi
     fi
 
     # Deploy logind lid switch rule
-    local logind_dst="/etc/systemd/logind.conf.d/99-hp-c640-lid.conf"
-    local logind_src="$SCRIPT_DIR/systemd/logind.conf.d/99-hp-c640-lid.conf"
+    local logind_dst="/etc/systemd/logind.conf.d/99-hp-chell-lid.conf"
+    local logind_old="/etc/systemd/logind.conf.d/99-hp-c640-lid.conf"
+    local logind_src="$SCRIPT_DIR/systemd/logind.conf.d/99-hp-chell-lid.conf"
     if [ -f "$logind_src" ]; then
         backup_file_manifest_aware "$logind_dst" "power"
         if [ "${DRY_RUN:-0}" = "1" ]; then
@@ -141,6 +152,11 @@ install_power() {
             sudo mkdir -p /etc/systemd/logind.conf.d
             sudo install -D -m 0644 "$logind_src" "$logind_dst"
             log_success "Deployed $logind_dst"
+            if [ -f "$logind_old" ] && [ "$logind_old" != "$logind_dst" ]; then
+                backup_file_manifest_aware "$logind_old" "power"
+                sudo rm -f "$logind_old" 2>/dev/null || true
+                log_info "Removed legacy $logind_old"
+            fi
         fi
     fi
 

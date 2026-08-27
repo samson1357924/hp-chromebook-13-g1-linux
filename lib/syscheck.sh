@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MIT
-# lib/syscheck.sh - Hardware & Firmware Compatibility Pre-flight Checks
+# lib/syscheck.sh - Hardware & Firmware Compatibility Pre-flight Checks (Chell / AVS)
 
 if [ -n "${_LIB_SYSCHECK_SH_LOADED:-}" ]; then
     return 0
@@ -31,20 +31,23 @@ check_dmi_board() {
     log_info "  - Product: $product_name"
     log_info "  - Board:   $board_name"
 
-    # Dratini / Jinlon / Hatch platform detection
-    case "$board_name" in
-        *Dratini* | *chell* | *Jinlon* | *jinlon* | *Hatch* | *hatch*)
-            log_success "Target Chromebook board ($board_name) matches HP Chromebook 13 G1 / Hatch platform."
+    # Chell / Glados / Lars family detection (case-insensitive)
+    local board_lc product_lc
+    board_lc=$(echo "$board_name" | tr '[:upper:]' '[:lower:]')
+    product_lc=$(echo "$product_name" | tr '[:upper:]' '[:lower:]')
+    case "$board_lc" in
+        *dratini* | *chell* | *jinlon* | *hatch* | *glados* | *lars*)
+            log_success "Target Chromebook board ($board_name) matches HP Chromebook 13 G1 / Chell platform."
             return 0
             ;;
         *)
-            case "$product_name" in
-                *Dratini* | *chell* | *HP*Pro*c640* | *Hatch* | *hatch*)
+            case "$product_lc" in
+                *dratini* | *chell* | *hp*chromebook*13*g1* | *hp*pro*c640* | *hatch* | *glados* | *lars*)
                     log_success "Target device product ($product_name) matches HP Chromebook 13 G1."
                     return 0
                     ;;
                 *)
-                    log_warn "Board '$board_name' / Product '$product_name' is not Dratini/Hatch. Generic Chromebook compatibility logic will be applied."
+                    log_warn "Board '$board_name' / Product '$product_name' is not Chell/Hatch. Generic Chromebook compatibility logic will be applied."
                     return 1
                     ;;
             esac
@@ -52,43 +55,77 @@ check_dmi_board() {
     esac
 }
 
-check_cros_fp_device() {
-    if [ -e /dev/cros_fp ]; then
-        local perms
-        perms="$(ls -l /dev/cros_fp | awk '{print $1, $3, $4}')"
-        log_success "ChromeOS Fingerprint device node /dev/cros_fp is present ($perms)."
+# ---- AVS (Chell) checks ----
+
+check_avs_audio_modules() {
+    local mods=(snd_soc_avs snd_soc_avs_ssm4567 snd_soc_avs_nau8825 snd_soc_avs_dmic snd_soc_avs_hdaudio)
+    local missing=0
+    for m in "${mods[@]}"; do
+        if lsmod | grep -qw "$m"; then
+            log_success "AVS module loaded: $m"
+        else
+            log_warn "AVS module NOT loaded: $m"
+            missing=1
+        fi
+    done
+    if [ "$missing" -eq 0 ]; then
         return 0
     else
-        log_warn "Device node /dev/cros_fp not found. Is ChromeOS EC SPI driver loaded (cros_ec_spi / cros_ec_chardev)?"
+        log_warn "Some AVS modules not loaded. Check kernel config CONFIG_SND_SOC_INTEL_AVS."
         return 1
     fi
+}
+
+check_avs_firmware_files() {
+    local found=0
+    if ls /lib/firmware/intel/avs/*.zst 1>/dev/null 2>&1; then
+        found=1
+    fi
+    if ls /lib/firmware/intel/avs/skl/*.zst 1>/dev/null 2>&1; then
+        found=1
+    fi
+    if [ "$found" -eq 1 ]; then
+        log_success "AVS firmware present in /lib/firmware/intel/avs/ (incl. skl/dsp_basefw.bin.zst)"
+        return 0
+    else
+        log_warn "AVS firmware not found in /lib/firmware/intel/avs/. Install linux-firmware."
+        return 1
+    fi
+}
+
+check_avs_mixer() {
+    if amixer -c4 cget name='DSP Volume' 2>/dev/null | grep -q "values=0"; then
+        log_warn "Card 4 DSP Volume is 0 (muted) - run audio/install-audio.sh"
+        return 1
+    else
+        log_success "Card 4 DSP Volume OK"
+        return 0
+    fi
+}
+
+check_cros_ec_device() {
+    if [ -e /dev/cros_ec ] || [ -e /dev/cros-ec ]; then
+        log_success "ChromeOS EC device node present."
+        return 0
+    else
+        log_warn "ChromeOS EC device node not found (/dev/cros_ec). Is cros_ec_chardev loaded?"
+        return 1
+    fi
+}
+
+# ---- Deprecated wrappers for backward compatibility (Dratini/SOF era) ----
+
+check_cros_fp_device() {
+    log_warn "check_cros_fp_device is deprecated for Chell (no fingerprint hardware)."
+    check_cros_ec_device
 }
 
 check_sof_audio_modules() {
-    if lsmod | grep -q "snd_sof_pci_intel_cnl"; then
-        log_success "Intel Skylake SOF DSP module loaded (snd_sof_pci_intel_cnl)."
-        return 0
-    elif lsmod | grep -q "snd_sof"; then
-        log_success "Generic Intel SOF subsystem loaded."
-        return 0
-    else
-        log_warn "Sound Open Firmware (SOF) driver module not active in kernel."
-        return 1
-    fi
+    log_warn "check_sof_audio_modules is deprecated for Chell (uses AVS, not SOF)."
+    check_avs_audio_modules
 }
 
 check_sof_firmware_files() {
-    local fw_paths=(
-        "/lib/firmware/intel/sof/community/sof-cml.ri"
-        "/lib/firmware/intel/sof/sof-cml.ri"
-        "/usr/lib/firmware/intel/sof/community/sof-cml.ri"
-    )
-    for p in "${fw_paths[@]}"; do
-        if [ -f "$p" ]; then
-            log_success "Found SOF Skylake DSP firmware: $p"
-            return 0
-        fi
-    done
-    log_warn "SOF Skylake firmware (sof-cml.ri) not found in /lib/firmware/intel/sof/. Please install firmware-sof-signed or linux-firmware."
-    return 1
+    log_warn "check_sof_firmware_files is deprecated for Chell (uses AVS)."
+    check_avs_firmware_files
 }

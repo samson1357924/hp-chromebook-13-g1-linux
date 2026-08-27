@@ -9,8 +9,8 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 # shellcheck source=lib/logger.sh
 source "$ROOT_DIR/lib/logger.sh"
 
-REPORT_DIR=$(mktemp -d -t c640-sysreport-XXXXXX)
-ARCHIVE_NAME="c640-diagnostic-$(date '+%Y%m%d_%H%M%S').tar.gz"
+REPORT_DIR=$(mktemp -d -t chell-sysreport-XXXXXX)
+ARCHIVE_NAME="chell-diagnostic-$(date '+%Y%m%d_%H%M%S').tar.gz"
 
 # sed rules applied to every collected text file before bundling so personal
 # information (MAC/IP/email/hostname/home dirs/serial numbers) never ships.
@@ -69,21 +69,31 @@ cat /proc/cmdline > "$REPORT_DIR/system/cmdline.txt" 2> /dev/null || true
 cat /etc/os-release > "$REPORT_DIR/system/os-release.txt" 2> /dev/null || true
 cat /sys/power/mem_sleep > "$REPORT_DIR/system/mem_sleep.txt" 2> /dev/null || true
 
-# 3. Audio & PipeWire
+# 3. Audio & PipeWire (AVS)
 mkdir -p "$REPORT_DIR/audio"
 if command -v aplay > /dev/null 2>&1; then
     LC_ALL=C aplay -l > "$REPORT_DIR/audio/aplay.txt" 2> /dev/null || true
+    LC_ALL=C arecord -l > "$REPORT_DIR/audio/arecord.txt" 2> /dev/null || true
 fi
+for c in 0 2 3 4; do
+    amixer -c"$c" contents > "$REPORT_DIR/audio/amixer-c${c}.txt" 2> /dev/null || true
+    alsaucm -c "hw:$c" dump text > "$REPORT_DIR/audio/alsaucm-hw${c}.txt" 2> /dev/null || true
+done
 if command -v wpctl > /dev/null 2>&1; then
     wpctl status > "$REPORT_DIR/audio/wpctl.txt" 2> /dev/null || true
 fi
-
-# 4. Fingerprint & EC
-mkdir -p "$REPORT_DIR/fingerprint_ec"
-ls -la /dev/cros_* > "$REPORT_DIR/fingerprint_ec/dev_nodes.txt" 2> /dev/null || true
-if [ -d "/sys/class/power_supply/BAT0" ]; then
-    cat /sys/class/power_supply/BAT0/uevent > "$REPORT_DIR/fingerprint_ec/battery.txt" 2> /dev/null || true
+if command -v pw-dump > /dev/null 2>&1; then
+    pw-dump > "$REPORT_DIR/audio/pw-dump.json" 2> /dev/null || true
 fi
+cat /proc/asound/cards > "$REPORT_DIR/audio/cards.txt" 2> /dev/null || true
+
+# 4. ChromeOS EC & Battery (Chell has no fingerprint)
+mkdir -p "$REPORT_DIR/ec"
+ls -la /dev/cros_* > "$REPORT_DIR/ec/dev_nodes.txt" 2> /dev/null || true
+if [ -d "/sys/class/power_supply/BAT0" ]; then
+    cat /sys/class/power_supply/BAT0/uevent > "$REPORT_DIR/ec/battery.txt" 2> /dev/null || true
+fi
+ls -l /etc/wireplumber/wireplumber.conf.d/ > "$REPORT_DIR/audio/wireplumber-confs.txt" 2> /dev/null || true
 
 # 5. Dmesg Errors & Warnings
 dmesg -T -l err,warn 2> /dev/null > "$REPORT_DIR/system/dmesg_warnings.txt" || true
