@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 -->
+
 # UCM for HP Chromebook 13 G1 (Chell)
 
 Chell 使用 **Intel AVS**，由發行版 `alsa-ucm-conf` 原生提供 UCM：

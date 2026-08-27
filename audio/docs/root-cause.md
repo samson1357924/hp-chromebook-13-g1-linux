@@ -42,6 +42,7 @@
    # access(.../conf.d/avs_ssm4567/AVS I2S SSM4567.conf) = -1 ENOENT
    # access(.../conf.d/avs_ssm4567/avs_ssm4567.conf) = -1 ENOENT
    ```
+
 2. PipeWire falls back to `stereo-fallback` (no HiFi), both HDMI and Speakers at `1000`.
 3. WirePlumber picks HDMI as default sink (enumeration order + `default.configured.audio.sink` bonus +30000).
 4. Even after UCM fixed, `DSP Volume 0` still mutes speakers — needs `amixer -c4 cset name='DSP Volume' 1500000000` (range is 0..2147483647, `120` would still be mute).

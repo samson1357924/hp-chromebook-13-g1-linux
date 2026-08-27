@@ -17,7 +17,7 @@
 ### 選項 B: 手動加 nomodeset
 
 1. 在 GRUB 選單反白 `Try or Install Ubuntu` 按 `e` 進入編輯
-2. 找到 `linux` 開頭的那一行，行尾加入 ` nomodeset` (與前面的 `quiet splash` 空格隔開)
+2. 找到 `linux` 開頭的那一行，行尾加入 `nomodeset` (與前面的 `quiet splash` 空格隔開)
 3. 按 `Ctrl+x` 或 `F10` 開機，即可進入安裝界面
 
 ```text

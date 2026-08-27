@@ -18,7 +18,7 @@ echo "Check both sources: /proc/cmdline + /etc/default/grub"
 
 if grep -q "nomodeset" /proc/cmdline || grep -q "nomodeset" /etc/default/grub; then
   log_info "nomodeset detected - removing from /etc/default/grub"
-  sudo cp /etc/default/grub /etc/default/grub.bak.$(date +%Y%m%d)
+  sudo cp /etc/default/grub "/etc/default/grub.bak.$(date '+%Y%m%d')"
   sudo sed -i 's/ *nomodeset//g' /etc/default/grub
   grep GRUB_CMDLINE_LINUX_DEFAULT /etc/default/grub
   sudo update-grub

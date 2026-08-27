@@ -16,7 +16,7 @@ Chell 使用 **Intel AVS** (`snd_soc_avs`) 而非 SOF。獨立多卡架構：
 
 ## 架構圖
 
-```
+```text
                         ┌─ avs_dmic (DMIC-2ch) ──► Mic Source
                         ├─ avs_ssm4567 ─────────► Speaker Sink  (priority 1500)
 PipeWire / WirePlumber ─┤

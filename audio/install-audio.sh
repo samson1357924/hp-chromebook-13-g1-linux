@@ -152,10 +152,8 @@ uninstall_audio() {
     rollback_component "audio"
     # Extra cleanup for empty conf.d dirs that were never tracked (if user manually created)
     if [ "${DRY_RUN:-0}" != "1" ]; then
-        for d in avs_ssm4567 avs_nau8825 avs_dmic avs_hdaudio; do
-            # Only remove our fallback symlinks if they still point to Chell files; manifest rollback already handled file restores
-            :
-        done
+        # Manifest rollback already handled file restores; no extra per-driver cleanup needed
+        true
     fi
     log_success "Audio configs rolled back. Restarting PipeWire/WirePlumber..."
     local real_user real_uid
@@ -273,7 +271,8 @@ deploy_wireplumber() {
     log_info "Deploying WirePlumber configs ..."
     for src in "$WP_SRC_AVS" "$WP_SRC_DISABLE"; do
         [ -f "$src" ] || { log_warn "  Source missing: $src"; continue; }
-        local dst="$WP_DST/$(basename "$src")"
+        local dst
+        dst="$WP_DST/$(basename "$src")"
         backup_file_manifest_aware "$dst" "audio"
         if [ "${DRY_RUN:-0}" = "1" ]; then
             log_dryrun "install -D -m 0644 $src -> $dst"
@@ -286,7 +285,6 @@ deploy_wireplumber() {
     local real_user real_uid
     real_user="$(get_real_user)"
     real_uid="$(get_real_user_uid)"
-    local legacy_user_conf=""
     if [ -n "$real_user" ] && [ "$real_user" != "root" ]; then
         local home_dir
         home_dir=$(getent passwd "$real_user" | cut -d: -f6)
@@ -294,7 +292,6 @@ deploy_wireplumber() {
         for legacy in "$home_dir/.config/wireplumber/wireplumber.conf.d/50-avs-rules.conf" \
                       "$home_dir/.config/wireplumber/wireplumber.conf.d/50-avs-chell.conf"; do
             if [ -f "$legacy" ]; then
-                legacy_user_conf="$legacy"
                 log_warn "  Found legacy per-user WirePlumber config shadowing /etc: $legacy"
                 if [ "${DRY_RUN:-0}" = "1" ]; then
                     log_dryrun "Would backup & remove $legacy (shadowing /etc)"

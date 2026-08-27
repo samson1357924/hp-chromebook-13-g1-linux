@@ -111,6 +111,7 @@ jobs:
       - name: Assert Repo (Dev) Layout Still Works
         run: |
           set -euo pipefail
+          chmod +x scripts/c640-ec-control.sh 2>/dev/null || true
           ./scripts/c640-ec-control.sh help > /dev/null
 
       - name: Uninstall Round-Trip (manifest rollback)

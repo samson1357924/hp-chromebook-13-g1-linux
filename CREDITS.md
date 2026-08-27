@@ -6,11 +6,9 @@ original authors, maintainers, and community projects.
 
 All upstream copyright notices, licenses, and conditions are strictly preserved
 in accordance with open-source licensing standards.
-
 ---
 
-
-* **License**: [GNU Lesser General Public License v2.1 or later (LGPL-2.1-or-later)](LICENSES/LGPL-2.1-or-later.txt)
+* **License**: Historically LGPL-2.1-or-later for CrMoc fingerprint (removed on Chell)
 * **Upstream Projects**:
   * [libfprint (freedesktop.org)](https://gitlab.freedesktop.org/libfprint/libfprint)
 * **Copyright Holders**:
@@ -32,7 +30,7 @@ in accordance with open-source licensing standards.
 ## 2. ALSA Use Case Manager (UCM2) Configurations for Chromebooks
 
 * **Target Directory**: `audio/ucm/`
-* **License**: [BSD 3-Clause "New" or "Revised" License (BSD-3-Clause)](LICENSES/BSD-3-Clause.txt)
+* **License**: Historically BSD-3-Clause for ALSA UCM (Chell now uses distro-provided AVS UCM, no vendored copy)
 * **Upstream Projects**:
   * [alsa-ucm-conf-cros by WeirdTreeThing](https://github.com/WeirdTreeThing/alsa-ucm-conf-cros)
   * [ALSA Project alsa-ucm-conf](https://github.com/alsa-project/alsa-ucm-conf)
@@ -59,7 +57,7 @@ in accordance with open-source licensing standards.
 ## 4. ChromiumOS Embedded Controller (EC) Protocols
 
 * **Target Directory**: `ec/`, `scripts/c640-ec-control.sh`
-* **License**: [BSD 3-Clause License (BSD-3-Clause)](LICENSES/BSD-3-Clause.txt)
+* **License**: [MIT License](LICENSES/MIT.txt) (EC tooling; ChromiumOS EC is BSD-3-Clause upstream)
 * **Upstream Project**: [ChromiumOS Platform EC](https://chromium.googlesource.com/chromiumos/platform/ec/)
 * **Copyright Holders**:
   * Copyright (c) 2010-2026 The ChromiumOS Authors
