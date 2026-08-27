@@ -49,9 +49,9 @@ check_avs_modules_local() {
 
 check_avs_firmware_local() {
     local fw
-    fw=$(ls /lib/firmware/intel/avs/*.bin* /lib/firmware/intel/avs/skl/*.bin* 2>/dev/null | head -n1 || true)
+    fw=$(ls /lib/firmware/intel/avs/*.bin* /lib/firmware/intel/avs/skl/*.bin* 2> /dev/null | head -n1 || true)
     if [ -n "$fw" ]; then
-        log_success "  AVS firmware present: $(ls /lib/firmware/intel/avs/ 2>/dev/null | tr '\n' ' ' | cut -c1-120)"
+        log_success "  AVS firmware present: $(ls /lib/firmware/intel/avs/ 2> /dev/null | tr '\n' ' ' | cut -c1-120)"
         return 0
     else
         log_warn "  AVS firmware not found in /lib/firmware/intel/avs/ (install linux-firmware)"
@@ -69,10 +69,10 @@ check_audio_status() {
 
     log_info "ALSA Sound Cards:"
     if command -v aplay > /dev/null 2>&1; then
-        LC_ALL=C aplay -l 2>/dev/null | grep -E "^card [0-9]+:" | while read -r line; do log_info "  $line"; done || log_warn "No sound cards detected."
+        LC_ALL=C aplay -l 2> /dev/null | grep -E "^card [0-9]+:" | while read -r line; do log_info "  $line"; done || log_warn "No sound cards detected."
     fi
     if command -v arecord > /dev/null 2>&1; then
-        LC_ALL=C arecord -l 2>/dev/null | grep -E "^card [0-9]+:" | while read -r line; do log_info "  $line"; done || true
+        LC_ALL=C arecord -l 2> /dev/null | grep -E "^card [0-9]+:" | while read -r line; do log_info "  $line"; done || true
     fi
 
     log_info "UCM Fallback Symlinks ($UCM_DST/conf.d):"
@@ -89,7 +89,7 @@ check_audio_status() {
     local miss=0
     for rel in "${checks[@]}"; do
         if [ -e "$UCM_DST/conf.d/$rel" ]; then
-            log_success "  Found: conf.d/$rel -> $(readlink "$UCM_DST/conf.d/$rel" 2>/dev/null || echo file)"
+            log_success "  Found: conf.d/$rel -> $(readlink "$UCM_DST/conf.d/$rel" 2> /dev/null || echo file)"
         else
             log_warn "  Missing: conf.d/$rel"
             miss=1
@@ -99,7 +99,7 @@ check_audio_status() {
     log_info "UCM PCM Index (should be hw:\${CardId},0):"
     for f in "$UCM_DST/Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0-HiFi.conf" "$UCM_DST/Intel/avs/avs_nau8825/avs_nau8825-HiFi.conf"; do
         if [ -f "$f" ]; then
-            if grep -q 'hw:${CardId},1' "$f" 2>/dev/null; then
+            if grep -q 'hw:${CardId},1' "$f" 2> /dev/null; then
                 log_warn "  $f still contains hw:\${CardId},1 (needs fix)"
             else
                 log_success "  $f PCM index OK"
@@ -110,10 +110,10 @@ check_audio_status() {
     log_info "ALSA Mixers:"
     for c in 4 3 0; do
         if amixer -c"$c" info > /dev/null 2>&1; then
-            log_info "  Card $c: $(cat /proc/asound/card$c/id 2>/dev/null) - $(amixer -c"$c" scontrols 2>/dev/null | head -n 3 | tr '\n' ';')"
+            log_info "  Card $c: $(cat /proc/asound/card$c/id 2> /dev/null) - $(amixer -c"$c" scontrols 2> /dev/null | head -n 3 | tr '\n' ';')"
         fi
     done
-    if amixer -c4 cget name='DSP Volume' 2>/dev/null | grep -q "values=0"; then
+    if amixer -c4 cget name='DSP Volume' 2> /dev/null | grep -q "values=0"; then
         log_warn "  Card 4 DSP Volume is 0 (muted)!"
     else
         log_success "  Card 4 DSP Volume non-zero"
@@ -126,8 +126,8 @@ check_audio_status() {
 
     if command -v wpctl > /dev/null 2>&1; then
         log_info "PipeWire Sinks/Sources:"
-        wpctl status 2>/dev/null | sed -n '/Audio/,/Video/p' | head -n 40 | while read -r line; do log_info "  $line"; done || true
-        if wpctl status 2>/dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -qi "ssm4567"; then
+        wpctl status 2> /dev/null | sed -n '/Audio/,/Video/p' | head -n 40 | while read -r line; do log_info "  $line"; done || true
+        if wpctl status 2> /dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -qi "ssm4567"; then
             log_success "  PipeWire Speaker sink (SSM4567) active"
         else
             log_warn "  Speaker sink (SSM4567) not found - check UCM/WirePlumber"
@@ -160,7 +160,7 @@ uninstall_audio() {
     real_user="$(get_real_user)"
     real_uid="$(get_real_user_uid)"
     if [ -n "$real_user" ] && [ -d "/run/user/$real_uid" ]; then
-        sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" systemctl --user restart pipewire wireplumber 2>/dev/null || true
+        sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" systemctl --user restart pipewire wireplumber 2> /dev/null || true
     fi
     log_success "Rollback complete."
 }
@@ -217,7 +217,7 @@ fix_ucm_pcm_index() {
     )
     for f in "${files[@]}"; do
         [ -f "$f" ] || continue
-        if grep -q 'hw:${CardId},1' "$f" 2>/dev/null; then
+        if grep -q 'hw:${CardId},1' "$f" 2> /dev/null; then
             backup_file_manifest_aware "$f" "audio"
             if [ "${DRY_RUN:-0}" = "1" ]; then
                 log_dryrun "sed -i 's/hw:\${CardId},1/hw:\${CardId},0/g' $f"
@@ -241,36 +241,39 @@ fix_mixers() {
     # SSM4567 - speakers (use name= syntax; sset fallback for locale)
     # Note: DSP Volume range is 0..2147483647 (need large value, 120 would be mute)
     if amixer -c4 info > /dev/null 2>&1; then
-        sudo -u "$(get_real_user)" amixer -c4 cset name='DSP Volume' 1500000000 2>/dev/null || amixer -c4 cset name='DSP Volume' 1500000000 2>/dev/null || amixer -c4 sset 'DSP' 80% 2>/dev/null || true
-        if amixer -c4 cget name='DSP Volume' 2>/dev/null | grep -q "values=0"; then
-            amixer -c4 cset name='DSP Volume' 2147483647 2>/dev/null || true
+        sudo -u "$(get_real_user)" amixer -c4 cset name='DSP Volume' 1500000000 2> /dev/null || amixer -c4 cset name='DSP Volume' 1500000000 2> /dev/null || amixer -c4 sset 'DSP' 80% 2> /dev/null || true
+        if amixer -c4 cget name='DSP Volume' 2> /dev/null | grep -q "values=0"; then
+            amixer -c4 cset name='DSP Volume' 2147483647 2> /dev/null || true
         fi
-        amixer -c4 cset name='Left Master Playback Volume' 191 2>/dev/null || amixer -c4 sset 'Left Master' 80% 2>/dev/null || true
-        amixer -c4 cset name='Right Master Playback Volume' 191 2>/dev/null || amixer -c4 sset 'Right Master' 80% 2>/dev/null || true
-        amixer -c4 cset name='Left Speaker Switch' on 2>/dev/null || true
-        amixer -c4 cset name='Right Speaker Switch' on 2>/dev/null || true
-        amixer -c4 cset name='Left Amplifier Boost Switch' on 2>/dev/null || true
-        amixer -c4 cset name='Right Amplifier Boost Switch' on 2>/dev/null || true
+        amixer -c4 cset name='Left Master Playback Volume' 191 2> /dev/null || amixer -c4 sset 'Left Master' 80% 2> /dev/null || true
+        amixer -c4 cset name='Right Master Playback Volume' 191 2> /dev/null || amixer -c4 sset 'Right Master' 80% 2> /dev/null || true
+        amixer -c4 cset name='Left Speaker Switch' on 2> /dev/null || true
+        amixer -c4 cset name='Right Speaker Switch' on 2> /dev/null || true
+        amixer -c4 cset name='Left Amplifier Boost Switch' on 2> /dev/null || true
+        amixer -c4 cset name='Right Amplifier Boost Switch' on 2> /dev/null || true
         log_success "  Card 4 (SSM4567) mixer unmuted"
     fi
     # NAU8825 - headphones
     if amixer -c3 info > /dev/null 2>&1; then
-        amixer -c3 cset name='Headphone Volume' 63,63 2>/dev/null || amixer -c3 sset 'Headphone' 100% 2>/dev/null || true
-        amixer -c3 cset name='Mic Volume' 255 2>/dev/null || amixer -c3 sset 'Mic' 100% 2>/dev/null || true
+        amixer -c3 cset name='Headphone Volume' 63,63 2> /dev/null || amixer -c3 sset 'Headphone' 100% 2> /dev/null || true
+        amixer -c3 cset name='Mic Volume' 255 2> /dev/null || amixer -c3 sset 'Mic' 100% 2> /dev/null || true
         log_success "  Card 3 (NAU8825) mixer set"
     fi
     # DMIC (range 0..2147483647, needs large value)
     if amixer -c0 info > /dev/null 2>&1; then
-        amixer -c0 cset name='DMIC Volume' 1500000000 2>/dev/null || amixer -c0 sset 'DMIC' 80% 2>/dev/null || amixer -c0 cset name='DMIC Volume' 2147483647 2>/dev/null || true
+        amixer -c0 cset name='DMIC Volume' 1500000000 2> /dev/null || amixer -c0 sset 'DMIC' 80% 2> /dev/null || amixer -c0 cset name='DMIC Volume' 2147483647 2> /dev/null || true
         log_success "  Card 0 (DMIC) mixer set"
     fi
-    sudo alsactl store 2>/dev/null || true
+    sudo alsactl store 2> /dev/null || true
 }
 
 deploy_wireplumber() {
     log_info "Deploying WirePlumber configs ..."
     for src in "$WP_SRC_AVS" "$WP_SRC_DISABLE"; do
-        [ -f "$src" ] || { log_warn "  Source missing: $src"; continue; }
+        [ -f "$src" ] || {
+            log_warn "  Source missing: $src"
+            continue
+        }
         local dst
         dst="$WP_DST/$(basename "$src")"
         backup_file_manifest_aware "$dst" "audio"
@@ -290,18 +293,19 @@ deploy_wireplumber() {
         home_dir=$(getent passwd "$real_user" | cut -d: -f6)
         [ -z "$home_dir" ] && home_dir="/home/$real_user"
         for legacy in "$home_dir/.config/wireplumber/wireplumber.conf.d/50-avs-rules.conf" \
-                      "$home_dir/.config/wireplumber/wireplumber.conf.d/50-avs-chell.conf"; do
+            "$home_dir/.config/wireplumber/wireplumber.conf.d/50-avs-chell.conf"; do
             if [ -f "$legacy" ]; then
                 log_warn "  Found legacy per-user WirePlumber config shadowing /etc: $legacy"
                 if [ "${DRY_RUN:-0}" = "1" ]; then
                     log_dryrun "Would backup & remove $legacy (shadowing /etc)"
                 else
-                    local ts; ts=$(date '+%Y%m%d_%H%M%S')
+                    local ts
+                    ts=$(date '+%Y%m%d_%H%M%S')
                     local backup_path="/var/backups/cros-enablement/${ts}${legacy}"
                     sudo mkdir -p "$(dirname "$backup_path")"
-                    sudo cp -a "$legacy" "$backup_path" 2>/dev/null || true
+                    sudo cp -a "$legacy" "$backup_path" 2> /dev/null || true
                     # Remove as the owning user to avoid root-owned leftover
-                    sudo -u "$real_user" rm -f "$legacy" 2>/dev/null || sudo rm -f "$legacy" 2>/dev/null || true
+                    sudo -u "$real_user" rm -f "$legacy" 2> /dev/null || sudo rm -f "$legacy" 2> /dev/null || true
                     log_success "  Removed legacy per-user config (backed up to $backup_path)"
                 fi
             fi
@@ -340,18 +344,18 @@ install_audio() {
         log_dryrun "Restart PipeWire & WirePlumber for user $real_user (UID: $real_uid)"
     else
         if [ -n "$real_user" ] && [ -d "/run/user/$real_uid" ]; then
-            sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" systemctl --user restart pipewire wireplumber 2>/dev/null || true
+            sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" systemctl --user restart pipewire wireplumber 2> /dev/null || true
             # Poll for graph rebuild (WirePlumber needs 2-5s)
             for _ in 1 2 3 4 5 6 7 8; do
-                if sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" wpctl status 2>/dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -qi "ssm4567"; then
+                if sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" wpctl status 2> /dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -qi "ssm4567"; then
                     break
                 fi
                 sleep 1
             done
             log_success "PipeWire & WirePlumber restarted for '$real_user'."
-        elif systemctl --user restart wireplumber 2>/dev/null; then
+        elif systemctl --user restart wireplumber 2> /dev/null; then
             for _ in 1 2 3 4 5 6 7 8; do
-                if wpctl status 2>/dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -qi "ssm4567"; then break; fi
+                if wpctl status 2> /dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -qi "ssm4567"; then break; fi
                 sleep 1
             done
             log_success "WirePlumber restarted."
@@ -362,21 +366,21 @@ install_audio() {
 
     log_step 5 5 "Verifying..."
     if [ "${DRY_RUN:-0}" != "1" ]; then
-        if LC_ALL=C aplay -l 2>/dev/null | grep -q "SSM4567"; then
+        if LC_ALL=C aplay -l 2> /dev/null | grep -q "SSM4567"; then
             log_success "ALSA card 'SSM4567' present."
         fi
-        if command -v wpctl > /dev/null 2>&1 && wpctl status 2>/dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -qi "ssm4567"; then
+        if command -v wpctl > /dev/null 2>&1 && wpctl status 2> /dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -qi "ssm4567"; then
             log_success "PipeWire Speaker sink (SSM4567) verified!"
         else
             log_warn "Speaker sink not yet visible - check 'wpctl status' after re-login"
         fi
         # Show default sink from Sinks section only
         local default_sink
-        default_sink=$(wpctl status 2>/dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -E '\*.*alsa_output' | head -n1 | sed 's/^[[:space:]]*//')
+        default_sink=$(wpctl status 2> /dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -E '\*.*alsa_output' | head -n1 | sed 's/^[[:space:]]*//')
         if [ -n "$default_sink" ]; then
             log_info "Default sink (Sinks section): $default_sink"
         else
-            log_info "Default sink: $(wpctl status 2>/dev/null | grep -E '\*.*alsa_output' | head -n1 | sed 's/^[[:space:]]*//')"
+            log_info "Default sink: $(wpctl status 2> /dev/null | grep -E '\*.*alsa_output' | head -n1 | sed 's/^[[:space:]]*//')"
         fi
         log_info "Test: speaker-test -D plughw:4,0 -c2 -l1  (or pw-play /usr/share/sounds/alsa/Front_Left.wav)"
     fi
@@ -387,12 +391,31 @@ install_audio() {
 ACTION="install"
 while [ $# -gt 0 ]; do
     case "$1" in
-        --install | -i) ACTION="install"; shift ;;
-        --check | -c) ACTION="check"; shift ;;
-        --uninstall | -u) ACTION="uninstall"; shift ;;
-        --dry-run | -n) export DRY_RUN=1; shift ;;
-        --help | -h) show_help; exit 0 ;;
-        *) log_error "Unknown option: $1"; show_help; exit 1 ;;
+        --install | -i)
+            ACTION="install"
+            shift
+            ;;
+        --check | -c)
+            ACTION="check"
+            shift
+            ;;
+        --uninstall | -u)
+            ACTION="uninstall"
+            shift
+            ;;
+        --dry-run | -n)
+            export DRY_RUN=1
+            shift
+            ;;
+        --help | -h)
+            show_help
+            exit 0
+            ;;
+        *)
+            log_error "Unknown option: $1"
+            show_help
+            exit 1
+            ;;
     esac
 done
 

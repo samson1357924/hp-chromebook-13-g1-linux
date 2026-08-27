@@ -114,7 +114,7 @@ install_power() {
             # Clean up legacy c640 file if present (migrated to chell)
             if [ -f "$tlp_old" ] && [ "$tlp_old" != "$tlp_dst" ]; then
                 backup_file_manifest_aware "$tlp_old" "power"
-                sudo rm -f "$tlp_old" 2>/dev/null || true
+                sudo rm -f "$tlp_old" 2> /dev/null || true
                 log_info "Removed legacy $tlp_old (migrated to $tlp_dst)"
             fi
         fi
@@ -134,7 +134,7 @@ install_power() {
             log_success "Deployed $modprobe_dst"
             if [ -f "$modprobe_old" ] && [ "$modprobe_old" != "$modprobe_dst" ]; then
                 backup_file_manifest_aware "$modprobe_old" "power"
-                sudo rm -f "$modprobe_old" 2>/dev/null || true
+                sudo rm -f "$modprobe_old" 2> /dev/null || true
                 log_info "Removed legacy $modprobe_old"
             fi
         fi
@@ -154,7 +154,7 @@ install_power() {
             log_success "Deployed $logind_dst"
             if [ -f "$logind_old" ] && [ "$logind_old" != "$logind_dst" ]; then
                 backup_file_manifest_aware "$logind_old" "power"
-                sudo rm -f "$logind_old" 2>/dev/null || true
+                sudo rm -f "$logind_old" 2> /dev/null || true
                 log_info "Removed legacy $logind_old"
             fi
         fi

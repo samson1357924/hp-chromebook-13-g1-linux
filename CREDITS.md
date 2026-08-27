@@ -6,6 +6,7 @@ original authors, maintainers, and community projects.
 
 All upstream copyright notices, licenses, and conditions are strictly preserved
 in accordance with open-source licensing standards.
+
 ---
 
 * **License**: Historically LGPL-2.1-or-later for CrMoc fingerprint (removed on Chell)

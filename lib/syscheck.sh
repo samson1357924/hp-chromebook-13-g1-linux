@@ -78,10 +78,10 @@ check_avs_audio_modules() {
 
 check_avs_firmware_files() {
     local found=0
-    if ls /lib/firmware/intel/avs/*.zst 1>/dev/null 2>&1; then
+    if ls /lib/firmware/intel/avs/*.zst 1> /dev/null 2>&1; then
         found=1
     fi
-    if ls /lib/firmware/intel/avs/skl/*.zst 1>/dev/null 2>&1; then
+    if ls /lib/firmware/intel/avs/skl/*.zst 1> /dev/null 2>&1; then
         found=1
     fi
     if [ "$found" -eq 1 ]; then
@@ -94,7 +94,7 @@ check_avs_firmware_files() {
 }
 
 check_avs_mixer() {
-    if amixer -c4 cget name='DSP Volume' 2>/dev/null | grep -q "values=0"; then
+    if amixer -c4 cget name='DSP Volume' 2> /dev/null | grep -q "values=0"; then
         log_warn "Card 4 DSP Volume is 0 (muted) - run audio/install-audio.sh"
         return 1
     else
