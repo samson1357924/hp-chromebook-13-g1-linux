@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 -->
+
 # Root Cause: No Speaker Output on Chell AVS (HP Chromebook 13 G1)
 
 ## 1. TL;DR
@@ -34,6 +36,7 @@
 ## 5. The Real Chain
 
 1. **UCM search fails**:
+
    ```bash
    strace -e trace=file alsaucm -c hw:4 dump text 2>&1 | grep -E "conf.d/avs_ssm4567"
    # access(.../conf.d/avs_ssm4567/AVS I2S SSM4567.conf) = -1 ENOENT
