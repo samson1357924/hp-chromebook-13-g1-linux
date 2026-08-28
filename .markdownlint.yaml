@@ -28,5 +28,8 @@ MD024:
 # MD028/no-blanks-blockquote: Allow blank lines between blockquotes (GFM alert syntax compatibility)
 MD028: false
 
+# MD060/table-column-style: Project uses compact tables (|---|---|) intentionally
+MD060: false
+
 # MD041/first-line-heading: Allow badges or banners before the first heading
 MD041: false

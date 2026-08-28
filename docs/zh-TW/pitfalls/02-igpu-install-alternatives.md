@@ -48,13 +48,17 @@ DRM KMS 退回 `simpledrm`。本文記載**在 USB 安裝階段就保留 `i915`
 1. 反白 `Try or Install Ubuntu` 按 `e`。
 2. 找到 `linux /casper/vmlinuz ... quiet splash ---`。
 3. 在 `quiet splash` 後、`---` 前空格加入：
-   ```
+
+   ```text
    i915.enable_psr=0 i915.enable_fbc=0 i915.enable_dc=0
    ```
+
    結果：
-   ```
+
+   ```text
    linux /casper/vmlinuz ... quiet splash i915.enable_psr=0 i915.enable_fbc=0 i915.enable_dc=0 ---
    ```
+
 4. 按 `Ctrl+x` / `F10` 開機。
 5. 安裝後持久化（同 `fix-graphics.sh` + 手動 GRUB）：
 
