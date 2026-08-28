@@ -69,6 +69,30 @@ on hold**, or want `Search + Top-Row` to produce classic `F1-F10`:
 
 ---
 
+## 💡 Keyboard Backlight (Verified 2026-08-29)
+
+Driver `cros_kbd_led_backlight` (via `cros_ec_lpcs` / `GOOG0002:00`) exposes:
+
+```
+/sys/class/leds/chromeos::kbd_backlight/{brightness,max_brightness,trigger}
+  max_brightness=100, trigger=[none] ...
+```
+
+* **Manual**: `echo 50 | sudo tee /sys/class/leds/chromeos::kbd_backlight/brightness` or `c640-ec-control kblight 50`
+* **GNOME (Wayland)**: `busctl --user get-property org.gnome.SettingsDaemon.Power /org/gnome/SettingsDaemon/Power org.gnome.SettingsDaemon.Power.Keyboard Brightness` and `StepUp/StepDown/Toggle` (+5/step, Toggle=0). Quick Settings slider appears automatically.
+* **Persistence**: `systemd-backlight@leds:chromeos::kbd_backlight.service` saves to `/var/lib/systemd/backlight/...:leds:chromeos::kbd_backlight`
+* **Permissions**: `ec/61-chromeos-kbd-backlight.rules` (`TAG+="uaccess"` + `GROUP plugdev MODE="0660"`) deployed via `./ec/install-ec.sh`; script falls back to `sudo tee` if not writable.
+
+Verify:
+
+```bash
+ls -l /sys/class/leds/chromeos::kbd_backlight/  # should exist
+cat /sys/class/leds/chromeos::kbd_backlight/max_brightness  # 100
+cat /sys/class/leds/chromeos::kbd_backlight/brightness
+c640-ec-control status | grep -A2 "Keyboard Backlight"
+busctl --user call org.gnome.SettingsDaemon.Power /org/gnome/SettingsDaemon/Power org.gnome.SettingsDaemon.Power.Keyboard StepUp
+```
+
 ## 🧪 Verification & Testing
 
 Verify that key events are properly recognized:
