@@ -141,10 +141,15 @@ eval_battery_limit() {
     fi
 
     local online="0"
-    for ac_path in /sys/class/power_supply/AC /sys/class/power_supply/ADP1 /sys/class/power_supply/ACAD; do
+    # Chell uses USB-PD via CROS_USBPD_CHARGER0/1 in addition to legacy AC
+    for ac_path in /sys/class/power_supply/AC /sys/class/power_supply/ADP1 /sys/class/power_supply/ACAD /sys/class/power_supply/CROS_USBPD_CHARGER0 /sys/class/power_supply/CROS_USBPD_CHARGER1; do
         if [ -f "$ac_path/online" ]; then
-            online=$(cat "$ac_path/online" 2> /dev/null || echo "0")
-            break
+            local val
+            val=$(cat "$ac_path/online" 2> /dev/null | tr -d ' \r\n' || echo "0")
+            if [ "$val" = "1" ]; then
+                online="1"
+                break
+            fi
         fi
     done
 

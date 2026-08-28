@@ -9,6 +9,16 @@ fi
 _LIB_LOGGER_SH_LOADED=1
 
 LOG_FILE="${LOG_FILE:-/tmp/cros-linux-setup.log}"
+# If log file is not writable (e.g., after sudo chown or reboot with stale perms),
+# fall back to per-user temp to avoid "Permission denied" noise in daemon (systemd).
+# Use ${UID:-$(id -u)} for dash/sh compatibility and avoid symlink attacks via predictable /tmp.
+if [ -e "$LOG_FILE" ] && [ ! -w "$LOG_FILE" ]; then
+    LOG_FILE="/tmp/cros-linux-setup-${UID:-$(id -u)}.log"
+fi
+# Mitigate symlink attack on predictable /tmp path: refuse if LOG_FILE is a symlink
+if [ -L "$LOG_FILE" ]; then
+    LOG_FILE="/tmp/cros-linux-setup-${UID:-$(id -u)}-$$.log"
+fi
 
 # Color codes
 CLR_RESET="\033[0m"
