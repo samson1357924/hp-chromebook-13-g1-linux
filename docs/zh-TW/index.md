@@ -35,7 +35,7 @@
 
 ## 📊 硬體運作狀態一覽
 
-> **誠實為本** — 🟢 = 已在實機 HP Chromebook 13 G1 驗證（Ubuntu 26.04 / kernel 7.0.0-29 / 2026-08-23），⚠️ = 驅動已綁定但功能測試未納入證據，❌ = 未量測。詳見 [實測驗證矩陣](verification.md)。
+> **誠實為本** — 🟢 = 已在實機 HP Chromebook 13 G1 驗證（Ubuntu 26.04 / kernel 7.0.0-30 / 2026-08-29），⚠️ = 驅動已綁定但功能測試未納入證據，❌ = 未量測。詳見 [實測驗證矩陣](verification.md)。
 
 | 硬體組件 | 運作狀態 | 驅動 / 解決方案 | 說明與支援度 |
 | :--- | :---: | :--- | :--- |
@@ -43,14 +43,14 @@
 | **立體聲喇叭 & 麥克風** | 🟢 **喇叭與麥克風正常** | Intel AVS + ALSA UCM2 / PipeWire | 喇叭 (SSM4567 hw4,0)、耳機 (NAU8825 hw3,0)、DMIC hw0,0 分流正常。**耳機插拔自動切換未納入證據** — 見 [verification.md](verification.md)。 |
 | ** Wi-Fi 5 & 藍牙 5.0** | ⚠️ **驅動已綁定** | Intel 7265 (`iwlwifi` / `btusb`) | 驅動開箱即綁定；**WPA3/吞吐量尚未量測**（見 [verification.md](verification.md)）。 |
 | **觸控螢幕 & 觸控板** | ⚠️ **驅動已綁定** | `i2c_hid` / `elan_i2c` | 模組存在；**手勢/防掌觸未納入證據**（見 [verification.md](verification.md)）。 |
-| **Intel UHD 顯示與硬解** | ⚠️ **驅動已綁定** | `i915` (Wayland / X11) | 顯示開箱即用；**VA-API 4K 60fps 未量測**（見 [verification.md](verification.md)）。 |
-| **鍵盤背光 & 頂排功能鍵** | ⚠️ **頂排已驗證** | `cros_ec` + `udev hwdb` / `keyd` | 頂排 F1–F10 已映射（hwdb 已驗證）。**背光未測試** — 見 [verification.md](verification.md)。 |
+| **Intel UHD 顯示與硬解** | 🟢 **已驗證 (2026-08-29)** | `i915` (`psr=0 fbc=0 dc=0`) | `i915` 已綁定 `card1`、`Mesa HD 515` `direct rendering: Yes`、FIFO `0`、CDCLK 450MHz — 見 [verification.md](verification.md)。 |
+| **鍵盤背光 & 頂排功能鍵** | 🟢 **已驗證 (2026-08-29)** | `cros_ec` + `udev hwdb` / `keyd` + `leds_cros_ec` / `61-kbd-backlight.rules` | 頂排已映射；鍵盤背光 `/sys/class/leds/chromeos::kbd_backlight` (max 100) 經 sysfs 與 GNOME `Power.Keyboard` `StepUp/Down/Toggle` 已實測，支援 `c640-ec-control kblight` — 見 [verification.md](verification.md)。 |
 | **EC 電池保護與風扇控制** | 🟢 **正常運作** | ChromeOS EC LPC (`c640-ec-control` + `c640-battery-limit`) | 90% 上限守護服務、0 mA AC 旁路、S3 休眠喚醒鉤子、風扇靜音模式。 |
 | **待機休眠** | 🟢 **S3 盒蓋週期已驗證** | ACPI S3 `deep`（預設）+ `s2idle` | 2026-08-18 實測盒蓋 S3 休眠/喚醒（零錯誤）。**按鍵/指紋喚醒未測試**；開蓋後需按鍵才亮（見 [verification.md](verification.md)）。 |
 | **雙 Type-C 輸出與快充** | ⚠️ **充電正常** | USB-PD + DP 1.2 Alt Mode | PD 充電正常；**Type-C 外接螢幕未驗證**（見 [verification.md](verification.md)）。 |
 
 !!! note "最後驗證"
-    **2026-08-23** 於 Ubuntu 26.04 LTS（kernel `7.0.0-29-generic`、PipeWire `1.6.2`、MrChromebox `2606.1`）。證據包 `chell-diagnostic-20260815_152233.tar.gz`（EC 90% 守護服務 + `c640-ec-sleep.sh` + `ectool` 已實機驗證）— 見 [verification.md](verification.md) 的重現步驟。
+    **2026-08-29** 於 Ubuntu 26.04 LTS（kernel `7.0.0-30-generic` / `7.0.0-14` baseline、PipeWire `1.6.2`、MrChromebox `2606.1`）。`i915` 已修復（FIFO 0、CDCLK 450MHz）、鍵盤背光 `chromeos::kbd_backlight`（max 100）經 GNOME 與 sysfs 實測、EC 90% 守護服務 — 見 [verification.md](verification.md) 的重現步驟。
 
 ---
 

@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Samson <https://github.com/samson1357924>
 
 site_name: HP Chromebook 13 G1 Linux
-site_description: Complete Linux hardware enablement for HP Chromebook 13 G1 (Google Chell / Skylake-Y) — AVS audio SSM4567/NAU8825, keyboard hwdb, keyboard hwdb, power & EC tuning.
+site_description: Complete Linux hardware enablement for HP Chromebook 13 G1 (Google Chell / Skylake-Y) — AVS audio SSM4567/NAU8825, keyboard hwdb, power & EC tuning.
 site_author: Samson
 site_url: https://samson1357924.github.io/hp-chromebook-13-g1-linux/
 repo_url: https://github.com/samson1357924/hp-chromebook-13-g1-linux
@@ -76,6 +76,9 @@ plugins:
                 - Verification: verification.md
                 - Troubleshooting: TROUBLESHOOTING.md
                 - Uninstall: UNINSTALL.md
+            - Pitfalls:
+                - Safe Graphics (nomodeset): pitfalls/01-safe-graphics-nomodeset.md
+                - iGPU Alternatives: pitfalls/02-igpu-install-alternatives.md
             - Deep Dive:
                 - AVS Audio (Chell): deep-dive/intel-avs-audio.md
                 - Graphics CDCLK Fix: deep-dive/i915-graphics-cdclk.md
@@ -99,6 +102,9 @@ plugins:
                 - 實測驗證: verification.md
                 - 疑難排解: TROUBLESHOOTING.md
                 - 解除安裝: UNINSTALL.md
+            - 避坑指南:
+                - 安全顯示 (nomodeset): pitfalls/01-safe-graphics-nomodeset.md
+                - iGPU 替代方案: pitfalls/02-igpu-install-alternatives.md
             - 深度解析:
                 - AVS 音訊 (Chell): deep-dive/intel-avs-audio.md
                 - 顯示 CDCLK 修正: deep-dive/i915-graphics-cdclk.md
@@ -162,6 +168,9 @@ nav: # fallback for non-i18n builds
       - Verification: verification.md
       - Troubleshooting: TROUBLESHOOTING.md
       - Uninstall: UNINSTALL.md
+  - Pitfalls:
+      - Safe Graphics: pitfalls/01-safe-graphics-nomodeset.md
+      - iGPU Alternatives: pitfalls/02-igpu-install-alternatives.md
   - Deep Dive:
       - AVS Audio (Chell): deep-dive/intel-avs-audio.md
       - Graphics CDCLK Fix: deep-dive/i915-graphics-cdclk.md

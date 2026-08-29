@@ -70,15 +70,26 @@ install_ec_tools() {
         fi
     fi
 
-    # Install udev rule for /dev/cros_ec if not present
+    # Install udev rules for /dev/cros_ec and keyboard backlight
     local udev_dst="/etc/udev/rules.d/60-cros-ec.rules"
+    local udev_kbd_dst="/etc/udev/rules.d/61-chromeos-kbd-backlight.rules"
+    local udev_kbd_src="$SCRIPT_DIR/61-chromeos-kbd-backlight.rules"
     backup_file_manifest_aware "$udev_dst" "ec"
-    log_step 3 3 "Installing udev rule for /dev/cros_ec..."
+    backup_file_manifest_aware "$udev_kbd_dst" "ec"
+    log_step 3 3 "Installing udev rules for /dev/cros_ec and kbd_backlight..."
     if [ "${DRY_RUN:-0}" = "1" ]; then
-        log_dryrun "Install 60-cros-ec.rules"
+        log_dryrun "Install 60-cros-ec.rules and 61-chromeos-kbd-backlight.rules"
     else
         sudo mkdir -p "$(dirname "$udev_dst")"
         echo 'KERNEL=="cros_ec", SUBSYSTEM=="misc", GROUP="plugdev", MODE="0660", TAG+="uaccess"' | sudo tee "$udev_dst" > /dev/null
+        if [ -f "$udev_kbd_src" ]; then
+            sudo install -D -m 0644 "$udev_kbd_src" "$udev_kbd_dst"
+        else
+            # Fallback inline if source missing (manual install)
+            sudo mkdir -p "$(dirname "$udev_kbd_dst")"
+            echo 'SUBSYSTEM=="leds", KERNEL=="chromeos::kbd_backlight", TAG+="uaccess", TAG+="seat"' | sudo tee "$udev_kbd_dst" > /dev/null
+            echo 'SUBSYSTEM=="leds", KERNEL=="chromeos::kbd_backlight", GROUP="plugdev", MODE="0660"' | sudo tee -a "$udev_kbd_dst" > /dev/null
+        fi
 
         # Ensure plugdev group exists and add user
         if ! getent group plugdev > /dev/null 2>&1; then
@@ -99,8 +110,14 @@ install_ec_tools() {
 
         sudo udevadm control --reload-rules 2> /dev/null || true
         sudo udevadm trigger --subsystem-match=misc 2> /dev/null || true
+        sudo udevadm trigger --subsystem-match=leds 2> /dev/null || true
         [ -e /dev/cros_ec ] && sudo chmod 0660 /dev/cros_ec 2> /dev/null || true
-        log_success "Configured udev access for /dev/cros_ec."
+        # 0660 via plugdev + uaccess for leds; persistent after reboot via udev,
+        # transient chmod for immediate use. Requires re-login for new group.
+        log_success "Configured udev access for /dev/cros_ec and chromeos::kbd_backlight."
+        if [ -n "${real_user:-}" ] && [ "${was_member:-1}" = "0" ] 2> /dev/null; then
+            log_warn "User '$real_user' added to plugdev; re-login or 'newgrp plugdev' required for kbd_backlight without sudo."
+        fi
     fi
 
     log_section "c640-ec-control installed successfully! 🔋"
