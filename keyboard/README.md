@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 -->
+
 # Keyboard Top-Row Mapping (HP Chromebook 13 G1)
 
 ChromeOS devices feature dedicated top-row action keys instead of traditional
@@ -73,7 +75,7 @@ on hold**, or want `Search + Top-Row` to produce classic `F1-F10`:
 
 Driver `cros_kbd_led_backlight` (via `cros_ec_lpcs` / `GOOG0002:00`) exposes:
 
-```
+```text
 /sys/class/leds/chromeos::kbd_backlight/{brightness,max_brightness,trigger}
   max_brightness=100, trigger=[none] ...
 ```

@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD013 -->
+
 # ✅ Verification Matrix (HP Chromebook 13 G1 - chell)
 
 ## Test Environment
@@ -21,6 +23,7 @@
 * **Keyboard backlight** `/sys/class/leds/chromeos::kbd_backlight` (`cros_kbd_led_backlight`, max 100) — sysfs `echo 0/100 > brightness` and GNOME `org.gnome.SettingsDaemon.Power.Keyboard` `StepUp/StepDown/Toggle` both verified; `systemd-backlight@leds:chromeos::kbd_backlight.service` active and `c640-ec-control kblight [PCT]` + udev `61-chromeos-kbd-backlight.rules` (`TAG+="uaccess"` + `GROUP plugdev MODE="0660"`) deployed
 * **Backlight (display)** `/sys/class/backlight/intel_backlight` present (max 187) via `i915`
 * **Fingerprint** - N/A (no hardware)
+* **Battery 90% protection** — `c640-ec-control` + `c640-battery-limit.service` verified (`inhibit-charge` 0 mA bypass + S3 wake hook)
 
 ## Untested / Needs Fix
 

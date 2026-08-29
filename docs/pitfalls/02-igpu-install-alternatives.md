@@ -52,13 +52,17 @@ power-saving features.
 1. Highlight `Try or Install Ubuntu`, press `e`.
 2. Find line `linux /casper/vmlinuz ... quiet splash ---`.
 3. Append **before** `---` (space-separated):
-   ```
+
+   ```text
    i915.enable_psr=0 i915.enable_fbc=0 i915.enable_dc=0
    ```
+
    Result:
-   ```
+
+   ```text
    linux /casper/vmlinuz ... quiet splash i915.enable_psr=0 i915.enable_fbc=0 i915.enable_dc=0 ---
    ```
+
 4. Press `Ctrl+x` / `F10` to boot.
 5. After installation, make persistent (same as `fix-graphics.sh` +
    manual GRUB edit):
