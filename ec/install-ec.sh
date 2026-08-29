@@ -273,6 +273,10 @@ done
 
 enable_kbd_follow_idle() {
     local src_dir="$SCRIPT_DIR/systemd/user"
+    # Fallback to power/systemd/user if ec copy missing (canonical is power/)
+    if [ ! -f "$src_dir/kbd-backlight-follow-idle.service" ] && [ -f "$ROOT_DIR/power/systemd/user/kbd-backlight-follow-idle.service" ]; then
+        src_dir="$ROOT_DIR/power/systemd/user"
+    fi
     local script_src="$SCRIPT_DIR/../power/kbd-follow-idle.sh"
     # Fallback to power/ if not in ec/systemd/user
     if [ ! -f "$script_src" ]; then
@@ -283,26 +287,42 @@ enable_kbd_follow_idle() {
         return 0
     fi
     log_section "Enabling optional keyboard backlight follow-screen-dim (user service)"
-    local user_systemd_dir
-    user_systemd_dir="$(getent passwd "$(get_real_user)" | cut -d: -f6)/.config/systemd/user"
+    local real_user
+    real_user="$(get_real_user)"
+    if [ -z "$real_user" ] || [ "$real_user" = "root" ]; then
+        log_warn "Unable to detect non-root user for kbd-follow-idle user service; skipping (run via sudo from your user)."
+        return 0
+    fi
+    if ! id -u "$real_user" > /dev/null 2>&1; then
+        log_warn "User '$real_user' does not exist; skipping kbd-follow-idle."
+        return 0
+    fi
+    local user_home
+    user_home="$(getent passwd "$real_user" | cut -d: -f6)"
+    if [ -z "$user_home" ] || [ ! -d "$user_home" ]; then
+        log_warn "Home for '$real_user' not found; skipping."
+        return 0
+    fi
+    local user_systemd_dir="$user_home/.config/systemd/user"
     if [ "${DRY_RUN:-0}" = "1" ]; then
         log_dryrun "Install kbd-follow-idle.sh and enable user service"
         return 0
     fi
-    sudo -u "$(get_real_user)" mkdir -p "$user_systemd_dir" 2> /dev/null || mkdir -p "$user_systemd_dir" 2> /dev/null || true
-    # Install script to /usr/local/bin
+    sudo -u "$real_user" mkdir -p "$user_systemd_dir" 2> /dev/null || mkdir -p "$user_systemd_dir" 2> /dev/null || true
+    # Install script to /usr/local/bin (track backup/manifest)
+    backup_file_manifest_aware "/usr/local/bin/kbd-follow-idle.sh" "ec"
     sudo install -D -m 0755 "$script_src" /usr/local/bin/kbd-follow-idle.sh
     # Install user service if present
     if [ -f "$src_dir/kbd-backlight-follow-idle.service" ]; then
-        sudo -u "$(get_real_user)" mkdir -p "$user_systemd_dir"
+        sudo -u "$real_user" mkdir -p "$user_systemd_dir"
         # Use manual cp to user dir (systemd --user)
         if [ -w "$user_systemd_dir" ]; then
             cp "$src_dir/kbd-backlight-follow-idle.service" "$user_systemd_dir/" 2> /dev/null || sudo cp "$src_dir/kbd-backlight-follow-idle.service" "$user_systemd_dir/"
         else
-            sudo -u "$(get_real_user)" cp "$src_dir/kbd-backlight-follow-idle.service" "$user_systemd_dir/" 2> /dev/null || true
+            sudo -u "$real_user" cp "$src_dir/kbd-backlight-follow-idle.service" "$user_systemd_dir/" 2> /dev/null || true
         fi
-        sudo -u "$(get_real_user)" systemctl --user daemon-reload 2> /dev/null || true
-        sudo -u "$(get_real_user)" systemctl --user enable --now kbd-backlight-follow-idle.service 2> /dev/null || log_warn "Enable user service requires re-login: systemctl --user enable --now kbd-backlight-follow-idle.service"
+        sudo -u "$real_user" systemctl --user daemon-reload 2> /dev/null || true
+        sudo -u "$real_user" systemctl --user enable --now kbd-backlight-follow-idle.service 2> /dev/null || log_warn "Enable user service requires re-login: systemctl --user enable --now kbd-backlight-follow-idle.service"
         log_success "Keyboard follow-idle enabled (opt-in). Disable: systemctl --user disable --now kbd-backlight-follow-idle.service"
     fi
 }

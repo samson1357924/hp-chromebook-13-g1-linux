@@ -20,7 +20,7 @@ set_kbd_brightness() {
     local val="$1"
     # Prefer gsd-power D-Bus (no sudo, no sysfs permission needed, respects systemd-backlight)
     if command -v busctl > /dev/null 2>&1; then
-        local gsd_val=$(( val * 21 / 100 ))
+        local gsd_val=$((val * 21 / 100))
         if busctl --user set-property org.gnome.SettingsDaemon.Power /org/gnome/SettingsDaemon/Power org.gnome.SettingsDaemon.Power.Keyboard Brightness i "$gsd_val" > /dev/null 2>&1; then
             # gsd will sync sysfs; also ensure sysfs if writable
             if [ -w "$KBD_LED" ]; then
@@ -92,8 +92,10 @@ fi
 cleanup_watches() {
     [ -n "$IDLE_WATCH_ID" ] && gdbus call --session --dest org.gnome.Mutter.IdleMonitor --object-path /org/gnome/Mutter/IdleMonitor/Core --method org.gnome.Mutter.IdleMonitor.RemoveWatch "$IDLE_WATCH_ID" > /dev/null 2>&1 || true
     [ -n "$ACTIVE_WATCH_ID" ] && gdbus call --session --dest org.gnome.Mutter.IdleMonitor --object-path /org/gnome/Mutter/IdleMonitor/Core --method org.gnome.Mutter.IdleMonitor.RemoveWatch "$ACTIVE_WATCH_ID" > /dev/null 2>&1 || true
+    [ -n "${PID1:-}" ] && kill "$PID1" 2> /dev/null || true
+    [ -n "${PID2:-}" ] && kill "$PID2" 2> /dev/null || true
 }
-trap cleanup_watches EXIT
+trap cleanup_watches EXIT INT TERM
 
 # Monitor ScreenSaver ActiveChanged
 gdbus monitor --session --dest org.gnome.ScreenSaver --object-path /org/gnome/ScreenSaver 2> /dev/null | while read -r line; do
@@ -122,7 +124,7 @@ gdbus monitor --session --dest org.gnome.Mutter.IdleMonitor --object-path /org/g
             restore
             ;;
         # Fallback heuristic if IDs not matched
-        *"WatchFired"* )
+        *"WatchFired"*)
             # Only handle if IDs were not captured
             if [ -z "$IDLE_WATCH_ID" ]; then
                 echo "[kbd-follow-idle] idle WatchFired (fallback) -> dim 0" >&2
