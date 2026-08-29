@@ -2,12 +2,18 @@
 # SPDX-FileCopyrightText: 2026 Samson <https://github.com/samson1357924>
 
 [Unit]
-Description=HP Chromebook 13 G1 (Chell) Battery Charge Protection Daemon (90% Limit)
-After=sysinit.target
+Description=HP Chromebook 13 G1 (Chell) Battery Charge Protection Daemon (Charge Limit)
+After=multi-user.target
+# Restart semantics: Restart=always covers crashes, not explicit `systemctl stop`.
+# Use `systemctl enable --now` to persist across reboots; `stop` is intentional
+# for maintenance and will not auto-restart.
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/c640-ec-control battery-daemon 90
+# Configurable via /etc/default/c640-battery-limit (BATTERY_LIMIT=85).
+# Fallback 90% if file absent. Override with: echo BATTERY_LIMIT=85 | sudo tee /etc/default/c640-battery-limit
+EnvironmentFile=-/etc/default/c640-battery-limit
+ExecStart=/bin/bash -c 'exec /usr/local/bin/c640-ec-control battery-daemon ${BATTERY_LIMIT:-90}'
 ExecStop=/usr/local/bin/c640-ec-control battery-full
 Restart=always
 RestartSec=5

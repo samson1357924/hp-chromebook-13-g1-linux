@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2026 Samson <https://github.com/samson1357924>
+# User service: keyboard backlight follows screen dim/idle (opt-in)
+# Install: ./ec/install-ec.sh --enable-kbd-follow-idle
+# Enable: systemctl --user enable --now kbd-backlight-follow-idle.service
+# Disable: systemctl --user disable --now kbd-backlight-follow-idle.service
+
+[Unit]
+Description=Keyboard backlight follow screen dim (chromeos::kbd_backlight)
+After=graphical-session.target
+PartOf=graphical-session.target
+ConditionEnvironment=XDG_CURRENT_DESKTOP
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/kbd-follow-idle.sh
+Restart=on-failure
+RestartSec=5
+# Avoid persisting 0 at shutdown via systemd-backlight
+ExecStop=/bin/sh -c 'cat ${XDG_RUNTIME_DIR:-/tmp}/kbd-backlight-saved 2>/dev/null | xargs -I{} sh -c "echo {} > /sys/class/leds/chromeos::kbd_backlight/brightness 2>/dev/null || busctl --user call org.gnome.SettingsDaemon.Power /org/gnome/SettingsDaemon/Power org.gnome.SettingsDaemon.Power.Keyboard Toggle > /dev/null 2>&1 || true" || true'
+
+[Install]
+WantedBy=graphical-session.target

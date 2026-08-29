@@ -12,7 +12,12 @@
 case "$1" in
     post)
         if [ -x "/usr/local/bin/c640-ec-control" ]; then
-            /usr/local/bin/c640-ec-control battery-eval 90 > /dev/null 2>&1 || true
+            # Respect user-configured limit in /etc/default/c640-battery-limit
+            # shellcheck disable=SC1091
+            set -a
+            [ -f /etc/default/c640-battery-limit ] && . /etc/default/c640-battery-limit 2> /dev/null || true
+            set +a
+            /usr/local/bin/c640-ec-control battery-eval "${BATTERY_LIMIT:-90}" > /dev/null 2>&1 || true
         fi
         ;;
 esac
