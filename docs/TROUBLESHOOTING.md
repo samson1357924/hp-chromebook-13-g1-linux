@@ -25,6 +25,20 @@
 
 * **Solution**: Same as #2 - enable `i915`, then `ls /sys/class/backlight/` should appear.
 
+### 3.1 Black screen on boot with i915 loaded (CDCLK 337.5 MHz FIFO Underrun Trap)
+
+* **Symptom**: `i915` is loaded, display backlight is ON, SSH / GDM3 is fully running, but screen outputs no image (black). `dmesg` reports `[drm] *ERROR* CPU pipe A FIFO underrun`.
+* **Root cause**: MrChromebox UEFI GOP starts the display at CDCLK = 337.5 MHz. Linux `i915` fastboot handover inherits the framebuffer without a modeset. Because 3200x1800 requires Pixel Clock 361.31 MHz ($> 337.5\text{ MHz}$), the pipe underruns on cold boot.
+* **Solution**:
+  ```bash
+  # Quick live recovery (triggers DPMS cycle / modeset to bump CDCLK to 450 MHz)
+  ./scripts/fix-graphics.sh --cycle-dpms
+
+  # Permanent fix (ensures kernel params + installs startup auto-fix service)
+  sudo ./scripts/fix-graphics.sh
+  ```
+* **Deep-Dive**: See [docs/deep-dive/i915-graphics-cdclk.md](deep-dive/i915-graphics-cdclk.md) for full hardware analysis.
+
 ## 🔊 Audio (AVS SSM4567 / NAU8825 / DMIC)
 
 ### 4. No sound / Dummy Output

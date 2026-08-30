@@ -36,7 +36,7 @@
 ### 3.1 硬體時鐘瓶頸 — Pixel Clock > CDCLK (主因, 已驗證)
 
 * 面板 DTD 要求 **`361.310 MHz`** (`xrandr --verbose:1`, `i915_display_info: CRTC pipe A mode 361310, port_clock 540000 x4 lanes`), 而 Skylake-Y 預設 `CDCLK=337.5 MHz` (`README 原 337.5MHz` + `journalctl -k -b -6:1` `Reducing the compressed framebuffer size...`).
-* 因 `361.31 > 337.5` 頻寬不足，`i915` 在 KMS modeset 瞬間連續觸發 **`[drm] *ERROR* CPU pipe A FIFO underrun`** (`journalctl -k -b -6/-5:1`, 每 boot 1-2次, `dmesg | grep FIFO` 在未修復時 6 boots 連續復現), 畫面鎖死黑屏但 SSH/GDM Wayland 存活。修復後 `CDCLK=450.0 MHz` (`450000 kHz`) 且 `FIFO underrun` 歸零。
+* 因 `361.31 > 337.5` 頻寬不足，`i915` 在 KMS modeset 瞬間連續觸發 **`[drm] *ERROR* CPU pipe A FIFO underrun`** (`journalctl -k -b -6/-5:1`, 每 boot 1-2次, `dmesg | grep FIFO` 在未修復時 6 boots 連續復現), 畫面鎖死黑屏但 SSH/GDM Wayland 存活。修復後 `CDCLK=450.0 MHz` (`450000 kHz`) 且 `FIFO underrun` 近零（近 3 次啟動 0 次，9 boots 內偶發 1-2 次單發 `FIFO underrun`/`Atomic update failure`，不再連發致黑屏；可用 `journalctl -k | grep -E "FIFO|Atomic"` 持續監控）。
 
 ### 3.2 GOP/VBT 未為 QHD+ 定製 + 節能時序衝突 (協同主因, 已驗證)
 
@@ -74,11 +74,18 @@ GRUB_CMDLINE_LINUX_DEFAULT="quiet splash i915.enable_psr=0 i915.enable_fbc=0 i91
 * **`i915.enable_fbc=0`**：停用幀緩衝區壓縮，避免 3200x1800 記憶體緩衝區爭用。
 * **`i915.enable_dc=0`**：停用 Display C-States，防止顯示核心進入過深休眠導致動態時鐘不足。
 
-### 步驟 2：更新 GRUB 並重開機
+### 步驟 2：更新 GRUB 與模組參數並安裝自動修復服務
+亦可直接執行專案自動化腳本一鍵配置與驗證（偵測到 `nomodeset` 時自動執行 `update-grub` / `update-initramfs` 並安裝服務）：
 ```bash
-sudo update-grub
+# 自動移除 nomodeset、設定 i915 參數並安裝開機 CDCLK 修復服務
+sudo ./scripts/fix-graphics.sh
+# 若僅手動修改 /etc/default/grub，請另執行：
+# sudo update-grub && sudo update-initramfs -u
 sudo reboot
 ```
+
+> [!NOTE]
+> **冷開機 Fastboot 陷阱防護**：MrChromebox UEFI GOP 開機時將 CDCLK 置於 337.5 MHz，Linux `i915` 無縫接管（fastboot）在冷開機時可能未觸發 Modeset 重算時鐘。腳本安裝的 `chell-cdclk-fix.service` 會在 GDM 啟動時自動檢查 CDCLK，若未滿 450 MHz 則自動觸發極短的 DPMS 重設，確保螢幕每次冷開機皆必定亮屏。
 
 ---
 
@@ -86,5 +93,5 @@ sudo reboot
 
 重開機後，經實機診斷確認：
 * **Core Display Clock (CDCLK)**：從 337.5 MHz 成功自動提升並穩定於 **`450.0 MHz`**（`450000 kHz`），高於像素時鐘 361.31 MHz。
-* **FIFO Underrun 報錯**：核心日誌中 `CPU pipe A FIFO underrun` 完全歸零（0 errors）。
-* **顯示狀態**：GDM3 與 GNOME Shell 桌面正常輸出，Intel HD 515 硬體加速與背光調節功能皆運作正常。
+* **FIFO Underrun 報錯**：近 3 次啟動 `CPU pipe A FIFO underrun` 為 0，9 boots 內偶發單次 `FIFO underrun`/`Atomic update failure`（修復前 6/6 連續復現，修復後頻率與嚴重度大幅下降，不再連發致黑屏）。
+* **顯示狀態**：GDM3 與 GNOME Shell 桌面正常輸出，Intel HD 515 硬體加速與背光調節功能皆運作正常。`xrandr` 在 Wayland `scale-monitor-framebuffer` 下顯示 3840x2160 為 XWayland 邏輯放大，DRM 物理層仍為 3200x1800@60（以 `Mutter GetCurrentState` / `i915_display_info` 為準）。

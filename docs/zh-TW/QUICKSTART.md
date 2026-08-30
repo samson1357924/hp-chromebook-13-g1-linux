@@ -29,7 +29,7 @@ chmod +x setup.sh
 | **僅安裝音訊 UCM 配置** | `./setup.sh --audio` 或 `./audio/install-audio.sh` |
 | **僅安裝鍵盤頂排映射** | `./setup.sh --keyboard` 或 `./keyboard/install-keyboard.sh` |
 | **僅安裝電源管理調校** | `./power/install-power.sh` |
-| **啟用 90% 電池保護服務** | `./ec/install-ec.sh --enable-battery-limit` |
+| **啟用電池保護服務（預設 90%，本機 85%）** | `./ec/install-ec.sh --enable-battery-limit 85` |
 | **系統硬體綜合診斷** | `./setup.sh --check` 或 `./scripts/detect-hardware.sh` |
 | **預覽所有變更 (Dry-Run)** | `./setup.sh --all --dry-run` |
 | **一鍵解除安裝與還原** | `./setup.sh --uninstall` |
@@ -54,8 +54,8 @@ wpctl status
 # 查看完整 EC 健康度儀表板（電池、風扇、全板溫度）
 c640-ec-control status
 
-# 設定 90% 充電上限保護（具備自動 AC 旁路）
-c640-ec-control battery-limit 90
+# 設定 85% 充電上限保護（預設 90%，具備自動 AC 旁路）
+c640-ec-control battery-limit 85
 
 # 打字靜音模式（風扇 0 RPM）
 c640-ec-control fan-silent

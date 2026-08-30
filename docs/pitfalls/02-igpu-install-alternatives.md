@@ -94,10 +94,10 @@ lsmod | grep i915 && echo "i915 loaded"
 # card1 when i915 is active, card0 when simpledrm; use wildcard
 readlink /sys/class/drm/card*/device/driver | grep -q i915 && echo "DRM is i915"
 glxinfo | grep "OpenGL renderer"  # Mesa Intel(R) HD Graphics 515
-# port_clock from i915_display_info; CDCLK is inferred via FIFO 0 + 450 MHz fix
+# port_clock from i915_display_info; CDCLK is inferred via FIFO near-zero + 450 MHz fix
 sudo cat /sys/kernel/debug/dri/*/i915_display_info | grep -E "port_clock|lane_count"
 # Expect: port_clock=540000 lane_count=4, mode "3200x1800": 60 361310
-journalctl -k -b | grep -ci "FIFO underrun"  # expect 0
+journalctl -k -b | grep -E "FIFO underrun|Atomic update failure"  # expect near-zero: 0 in last 3 boots, occasional single in 9 boots
 cat /sys/class/backlight/intel_backlight/max_brightness  # 187, confirms i915 backlight
 ```
 
@@ -115,7 +115,7 @@ for native timing.
 **Evidence**: 2026-08-29, kernel 7.0.0-30,
 `i915_display_info` shows `mode "3200x1800": 60 361310 ... port_clock=540000
 lane_count=4`, `i915_dmc_info` `DC3->DC5 count: 0`,
-`journalctl -k` FIFO 0 (vs 6/6 boots with FIFO when undecorated).
+`journalctl -k` FIFO near-zero (0 in last 3 boots, occasional single in 9 boots vs 6/6 boots with FIFO when undecorated).
 
 ---
 
@@ -222,7 +222,7 @@ On HP Chromebook 13 G1, MrChromebox 2606.1, Ubuntu 26.04.1 USB:
 
 1. Boot USB, at GRUB apply A, boot.
 2. In Live, run `lsmod | grep i915`, `glxinfo | grep renderer`,
-   `journalctl -k | grep -i "FIFO\|underrun"` (expect 0),
+    `journalctl -k | grep -E "FIFO underrun|Atomic update failure"` (expect near-zero: 0 in last 3 boots, occasional single in 9 boots),
    `cat /sys/class/backlight/intel_backlight/max_brightness`.
 3. Install, reboot, confirm `cat /proc/cmdline` retains three i915
    params and no `nomodeset`.

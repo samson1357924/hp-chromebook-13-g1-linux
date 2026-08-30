@@ -24,7 +24,7 @@
 2. 移除 `/etc/udev/hwdb.d/90-chromebook-keyboard.hwdb` 並重整硬體資料庫。
 3. 移除 `/etc/udev/rules.d/60-cros-fp.rules`。
 4. 移除電源管理調校（logind 設定與休眠輔助）。
-5. 移除 EC 工具、90% 電池保護服務與休眠喚醒鉤子。
+5. 移除 EC 工具、電池保護服務（本機 85%，預設 90%）與休眠喚醒鉤子。
 6. 從**本專案首次安裝前的最早備份**還原每個檔案（重裝會保留第一次備份，
    因此 rollback 永遠還原到專案介入前的狀態）。
 7. 還原安裝器曾修改的 systemd 服務啟用/運作狀態（`thermald`、`tlp`、
@@ -73,7 +73,7 @@
   > `systemd-logind` 會登出所有人（session leader 在 deserialization 時遺失），
   > 外觀上與系統當機完全相同（HP Chromebook 13 G1 實測，2026-08-18）。
 
-* **僅移除 EC 工具與服務**（含 90% 電池保護 `c640-battery-limit.service` 與 `c640-ec-sleep.sh`）：
+* **僅移除 EC 工具與服務**（含電池保護 `c640-battery-limit.service`（本機 85%，預設 90%）與 `c640-ec-sleep.sh`）：
 
   ```bash
   ./ec/install-ec.sh --uninstall
@@ -81,10 +81,10 @@
 
 ---
 
-## 🔋 附註：90% 電池保護服務
+## 🔋 附註：電池保護服務（本機 85%，預設 90%）
 
 `./ec/install-ec.sh --enable-battery-limit` 會安裝並啟動 `c640-battery-limit.service`，
-將電池充電上限維持在 90% 以延長壽命。執行 `./ec/install-ec.sh --uninstall` 或
+將電池充電上限維持在 85%（預設 90%）以延長壽命。執行 `./ec/install-ec.sh --uninstall` 或
 `./setup.sh --uninstall` 時會一併移除。
 
 > [!NOTE]

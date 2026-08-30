@@ -36,7 +36,7 @@ show_menu() {
     echo "  [1] Complete Setup (Keyboard + Audio + Power + EC + Graphics Fix)"
     echo "  [2] Audio Diagnostics Only (AVS SSM4567/NAU8825/DMIC + PipeWire)"
     echo "  [3] Keyboard Top-Row Mapping Only (systemd-hwdb)"
-    echo "  [4] Power Management & EC Control (Battery 90% + S3)"
+    echo "  [4] Power Management & EC Control (Battery 85% local / 90% default + suspend [s2idle] deep)"
     echo "  [5] Graphics Fix Only (remove nomodeset, enable i915)"
     echo "  [6] Full Hardware & Diagnostics Check"
     echo "  [7] Generate Diagnostic Bundle (sysreport.tar.gz)"
@@ -97,6 +97,11 @@ run_graphics() {
     "$SCRIPT_DIR/scripts/fix-graphics.sh"
 }
 
+run_graphics_uninstall() {
+    make_executable "$SCRIPT_DIR/scripts/fix-graphics.sh"
+    "$SCRIPT_DIR/scripts/fix-graphics.sh" --uninstall || true
+}
+
 run_check() {
     make_executable "$SCRIPT_DIR/scripts/detect-hardware.sh"
     "$SCRIPT_DIR/scripts/detect-hardware.sh"
@@ -112,12 +117,14 @@ run_uninstall() {
     make_executable "$SCRIPT_DIR/keyboard/install-keyboard.sh" \
         "$SCRIPT_DIR/audio/install-audio.sh" \
         "$SCRIPT_DIR/power/install-power.sh" \
-        "$SCRIPT_DIR/ec/install-ec.sh" || true
+        "$SCRIPT_DIR/ec/install-ec.sh" \
+        "$SCRIPT_DIR/scripts/fix-graphics.sh" || true
     local failed=0
     "$SCRIPT_DIR/keyboard/install-keyboard.sh" --uninstall || failed=1
     "$SCRIPT_DIR/audio/install-audio.sh" --uninstall || failed=1
     "$SCRIPT_DIR/power/install-power.sh" --uninstall || failed=1
     "$SCRIPT_DIR/ec/install-ec.sh" --uninstall || failed=1
+    run_graphics_uninstall || failed=1
     if [ "$failed" -ne 0 ]; then
         log_error "One or more components failed to uninstall; check log."
         return 1

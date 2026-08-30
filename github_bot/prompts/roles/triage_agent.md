@@ -24,7 +24,7 @@ If a claim cannot be grounded, write `NOT_ENOUGH_INFO`.
 - **Symptom: Dummy Output / No sound**:
   - Check 1: Cards listed in `aplay -l`? Expected: 4 AVS cards — `avs_dmic`, `avs_nau8825`, `avs_ssm4567`, `avs_hdaudio` (e.g. `card 0: avs_dmic`, `card 3: avs_nau8825`, `card 4: avs_ssm4567` backed by `snd_soc_avs`).
   - Check 2: Are all 12 UCM fallback symlinks present in `/usr/share/alsa/ucm2/conf.d/avs_*` → `Intel/avs/*`? Expected: `avs_ssm4567/AVS I2S SSM4567.conf`, `avs_ssm4567/avs_ssm4567.conf`, `avs_nau8825/AVS I2S NAU8825.conf`, `avs_nau8825/avs_nau8825.conf`, `avs_dmic/AVS DMIC.conf`, `avs_dmic/avs_dmic.conf`, `avs_hdaudio/AVS HDMI.conf`, `avs_hdaudio/avs_hdaudio.conf` plus `Hewlett_Packard-Chell-1.0.conf` per card (12 symlinks total).
-  - Check 3: UCM base is `Intel/avs/` (e.g. `Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0.conf`); fallback symlinks in `conf.d/` must point there. Missing fallback causes `alsaucm -c hw:3 dump text` / `hw:4 dump text` to fail with `-2` and PipeWire to fall back to Dummy Output.
+  - Check 3: UCM base is `Intel/avs/` (e.g. `Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0.conf`); fallback symlinks in `conf.d/` must point there. Missing fallback causes `alsaucm -c hw:NAU8825 dump text` / `hw:SSM4567 dump text` to fail with `-2` and PipeWire to fall back to Dummy Output.
   - Check 4: Headphone plugged vs unplugged auto-switch behavior (NAU8825 vs SSM4567).
   - Check 5: `dmesg | grep -i avs` showing firmware load error or `snd_soc_avs` probe failure?
 
@@ -44,12 +44,12 @@ If a claim cannot be grounded, write `NOT_ENOUGH_INFO`.
   - Check 3: DMI match verification: Coreboot DMI (`Google:pnChell` / `Google:pnLars`) vs OEM DMI (`HP:pnHP Chromebook 13 G1`).
   - Check 4: For keyd users, is `keyd.service` active and `/etc/keyd/cros.conf` configured?
 
-### 4. ⚡ Power Management & S3 Deep Sleep (S3 deep only — no S0ix)
+### 4. ⚡ Power Management & Suspend (`[s2idle] deep` — s2idle default, deep available, no HW S0ix)
 - **Symptom: High battery drain during suspend or failed resume**:
-  - Check 1: `/sys/power/mem_sleep` should show `[deep]` (e.g. `s2idle [deep]`) — S3 `deep` is the ONLY supported mode on Chell/Skylake-Y. `s2idle` (S0ix / Modern Standby) is NOT supported; do NOT advise switching to `s2idle`.
-  - Check 2: Verify suspend entry is `deep`: `journalctl -k | grep "PM: suspend entry (deep)"`. S3 deep is normal on Coreboot/MrChromebox firmware and does NOT cause kernel panics.
-  - Check 3: Check battery drain before/after suspend via `/sys/class/power_supply/BAT0/charge_*` or `capacity`; do NOT check Intel PMC `slp_s0_residency_usec` / Package C10 (S0ix-only).
-  - Check 4: Check wake-up inhibition for touchpad/touchscreen in `/etc/udev/rules.d/` — rules should not disable power-button wake. No `90-c640-power.rules` S0ix inhibition expected on Chell.
+  - Check 1: `/sys/power/mem_sleep` should show `[s2idle] deep` — `s2idle` is default, `deep` available (via `mem_sleep_default=deep` or `echo deep > /sys/power/mem_sleep`). Chell/Skylake-Y has no hardware S0ix Modern Standby; `s2idle` is software-emulated.
+  - Check 2: Verify suspend entry: `journalctl -k | grep "PM: suspend entry"` — expect `(s2idle)` by default, `(deep)` if `mem_sleep_default=deep` is set. Both are normal on Coreboot/MrChromebox firmware and do NOT cause kernel panics.
+  - Check 3: Check battery drain before/after suspend via `/sys/class/power_supply/BAT0/charge_*` or `capacity`; do NOT check Intel PMC `slp_s0_residency_usec` / Package C10 (S0ix-only hardware residency).
+  - Check 4: Check wake-up inhibition for touchpad/touchscreen in `/etc/udev/rules.d/` — rules should not disable power-button wake.
 
 ---
 

@@ -11,7 +11,7 @@ Hardware support under Linux for **HP Chromebook 13 G1** (Google **`chell`**, ba
 | Hardware Component | Chip Model / Spec | Linux Kernel Driver | Support Status | Notes |
 | :--- | :--- | :--- | :---: | :--- |
 | **CPU** | Intel Core m7-6Y75 (m3-6Y30/m5-6Y57 options) Skylake-Y 4.5W | `intel_pstate` | 🟢 **Working** | 4 threads, 1.2-3.1GHz, `lscpu` OK |
-| **GPU / Display** | Intel HD Graphics 515 (GT2, 24EU) [8086:191e] | `i915` | 🟢 **Working (2026-08-29)** | `i915` bound to `card1`, `Mesa HD 515` `direct rendering: Yes`, `3200x1800@60 361.31MHz` CDCLK 450MHz FIFO 0 with `i915.enable_psr=0 fbc=0 dc=0` (via `scripts/fix-graphics.sh`). |
+| **GPU / Display** | Intel HD Graphics 515 (GT2, 24EU) [8086:191e] | `i915` | 🟢 **Working (2026-08-29)** | `i915` bound to `card1`, `Mesa HD 515` `direct rendering: Yes`, `3200x1800@60 361.31MHz` CDCLK 450MHz FIFO near-zero with `i915.enable_psr=0 fbc=0 dc=0` (via `scripts/fix-graphics.sh`; 0 in last 3 boots, occasional single `FIFO`/`Atomic` in 9 boots, no longer continuous). DRM physical 3200x1800, `xrandr` 3840x2160 is XWayland scaled framebuffer under `scale-monitor-framebuffer`. |
 | **Keyboard Backlight** | ChromeOS EC `chromeos::kbd_backlight` max 100 | `cros_kbd_led_backlight` / `leds_cros_ec` + `61-chromeos-kbd-backlight.rules` | 🟢 **Working (2026-08-29)** | `/sys/class/leds/chromeos::kbd_backlight` + GNOME `Power.Keyboard` `StepUp/Down/Toggle` (+5/step) + `c640-ec-control kblight [PCT]` + `systemd-backlight` verified; uaccess/plugdev deployed. |
 | **Speakers** | SSM4567 I2S Amp (AVS) | `avs_ssm4567` | 🟢 **Working** | `aplay -l` Card0 SSM4567, PipeWire sink OK |
 | **Headset Jack** | Nuvoton NAU8825 (I2C) | `avs_nau8825` | 🟢 **Working** | Card1 NAU8825, headset playback+capture OK |
@@ -24,7 +24,7 @@ Hardware support under Linux for **HP Chromebook 13 G1** (Google **`chell`**, ba
 | **Keyboard Top-Row** | ChromeOS EC top-row | `cros_ec` + `hwdb`/`keyd` | 🟢 **Working** | `90-chromebook-keyboard.hwdb` + `keyd/cros.conf` mapped, verified via `evtest`. |
 | **Display Backlight** | `intel_backlight` max 187 | `i915` | 🟢 **Present** | `/sys/class/backlight/intel_backlight` via `i915` eDP-1 |
 | **EC / PD** | ChromeOS EC LPC + PD | `cros_ec` / `cros_pd` | 🟢 **Present** | `/dev/cros_ec` + `/dev/cros_pd` OK |
-| **Sleep** | S3 deep | `S3` | 🟢 **Available** | Skylake uses legacy S3, not S0ix |
+| **Sleep** | `[s2idle] deep` (s2idle default, deep available) | `s2idle` | 🟢 **Available** | Kernel exposes both `s2idle` (default) and `deep`; `deep` available via `mem_sleep_default=deep` or `echo deep > /sys/power/mem_sleep`. |
 | **Fingerprint** | — | — | ⛔ **N/A** | G1 has no fingerprint sensor |
 
 ---

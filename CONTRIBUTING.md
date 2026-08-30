@@ -50,11 +50,11 @@ Chell uses **Intel AVS** (`avs_ssm4567` Speakers, `avs_nau8825` Headphones, `avs
 ```bash
 sudo ./audio/install-audio.sh --install   # patches UCM, deploys 50-avs-chell.conf, unmutes DSP
 ./audio/diagnose-audio.sh                  # 6-dimension check
-alsaucm -c hw:4 dump text | grep Verb.HiFi # should show HiFi
-speaker-test -D plughw:4,0 -c2 -l1          # speakers (must be plughw + -c2)
+alsaucm -c hw:SSM4567 dump text | grep Verb.HiFi # should show HiFi
+speaker-test -D plughw:SSM4567,0 -c2 -l1          # speakers (must be plughw + -c2)
 ```
 
-* Pitfall: `hw:4,0` only accepts 2ch; mono `aplay -D hw:4,0` fails — use `plughw:4,0`.
+* Pitfall: `hw:SSM4567,0` only accepts 2ch; mono `aplay -D hw:SSM4567,0` fails — use `plughw:SSM4567,0`.
 * WirePlumber priority: `50-avs-chell.conf` (2000 Headphones > 1500 Speakers > 500 HDMI).
 
 #### 3.3 Diagnostics

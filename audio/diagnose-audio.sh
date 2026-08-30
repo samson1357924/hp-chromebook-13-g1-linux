@@ -97,8 +97,8 @@ for f in "$UCM_DST/Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0-HiFi.conf" "$
     fi
 done
 if command -v alsaucm > /dev/null 2>&1; then
-    echo "  alsaucm verb check:"
-    for c in 4 3 0 2; do
+    echo "  alsaucm verb check (using ALSA IDs - card numbers are dynamic):"
+    for c in SSM4567 NAU8825 HDMI DMIC; do
         if alsaucm -c "hw:$c" dump text 2>&1 | grep -q "Verb.HiFi"; then
             echo "    [OK] hw:$c Verb.HiFi"
         else
@@ -108,17 +108,17 @@ if command -v alsaucm > /dev/null 2>&1; then
 fi
 echo ""
 
-echo "--- [5/6] ALSA Mixers ---"
-for card in 4 3 0; do
+echo "--- [5/6] ALSA Mixers (using ALSA IDs) ---"
+for card in SSM4567 NAU8825 DMIC; do
     if amixer -c"$card" info > /dev/null 2>&1; then
-        echo "  Card $card ($(cat /proc/asound/card$card/id 2> /dev/null)):"
+        echo "  Card $card:"
         amixer -c"$card" scontrols 2> /dev/null | sed 's/^/    /'
         amixer -c"$card" contents 2> /dev/null | grep -E "values=" | head -n 20 | sed 's/^/    /'
     fi
 done
-# Highlight DSP mute (use name= syntax)
-if amixer -c4 cget name='DSP Volume' 2> /dev/null | grep -q "values=0"; then
-    echo "  [WARN] Card 4 DSP Volume is 0 (muted) - run install-audio.sh to unmute"
+# Highlight DSP mute (use name= syntax, ALSA ID)
+if amixer -cSSM4567 cget name='DSP Volume' 2> /dev/null | grep -q "values=0"; then
+    echo "  [WARN] SSM4567 DSP Volume is 0 (muted) - run install-audio.sh to unmute"
 fi
 echo ""
 

@@ -12,6 +12,31 @@
 
 ---
 
+## 🖥️ 顯示與螢幕問題 (Graphics & Display)
+
+### 0. 安裝時選「Try or Install Ubuntu」黑畫面卡在 logo
+* **根本原因**：`i915` KMS 驅動與 chell 韌體 GOP/VBT 時序相衝。
+* **解決方法**：GRUB 選單選擇 **`Ubuntu (safe graphics)`** 或在開機參數手動加入 `nomodeset`。詳見 [PITFALL-01: Safe Graphics / nomodeset](pitfalls/01-safe-graphics-nomodeset.md)。
+
+### 0.1 安裝後仍使用 simpledrm，無 i915 硬體加速 (`lsmod` 無 i915)
+* **根本原因**：安裝程式將 `nomodeset` 殘留在 `/etc/default/grub`。
+* **解決方法**：執行 `./scripts/fix-graphics.sh` 或手動移除 `nomodeset` 後更新 GRUB 並重開機。
+
+### 0.2 開機時 i915 驅動已載入，但面板全黑屏（CDCLK 337.5MHz FIFO Underrun 陷阱）
+* **症狀**：螢幕背光已亮，`lsmod | grep i915` 正常，SSH、GDM3 登入器與 GNOME Wayland 背景皆正常，但實體面板全黑無畫面。核心日誌出現 `[drm] *ERROR* CPU pipe A FIFO underrun`。
+* **根本原因**：MrChromebox UEFI GOP 韌體開機時將 CDCLK 設定於 337.5 MHz。Linux `i915` 驅動開機時採用 fastboot 無縫接管，未在初始階段觸發完整 Modeset 重算時鐘。由於 3200x1800@60Hz 螢幕像素時鐘需 361.31 MHz（> 337.5 MHz），導致開機瞬間顯示管線 FIFO 欠載當鎖。
+* **解決方法**：
+  ```bash
+  # 線上即時復原（發送 DPMS 訊號觸發 Modeset 重算時鐘至 450 MHz）
+  ./scripts/fix-graphics.sh --cycle-dpms
+
+  # 一鍵持久化設定（安裝開機自動修復服務 + 配置 i915 參數）
+  sudo ./scripts/fix-graphics.sh
+  ```
+* **深度剖析**：詳見 [docs/zh-TW/deep-dive/i915-graphics-cdclk.md](deep-dive/i915-graphics-cdclk.md)。
+
+---
+
 ## 🔊 音效問題 (Audio)
 
 ### 1. 系統音效顯示 "Dummy Output" (虛擬輸出)，完全無聲
@@ -263,7 +288,7 @@
 
 ### 14. 開蓋喚醒後螢幕全黑（需按鍵/點擊才亮）
 
-* **症狀**：盒蓋休眠（S3 `deep`）後打開，系統已喚醒（`PM: suspend exit`）
+* **症狀**：盒蓋休眠（`[s2idle] deep`，s2idle 預設）後打開，系統已喚醒（`PM: suspend exit`）
   但面板**全黑**，直到按鍵或點擊才亮。不是當機——輸入一到鎖定畫面即正常。
 * **根因（2026-08-18 兩個候選機制）**：
   1. **GNOME 使用者層再次黑屏**（最可能，符合「按鍵即恢復」特徵）：
@@ -296,14 +321,14 @@
   `org.gnome.SettingsDaemon.Power` 是否有 resume 後再度關閉螢幕的事件
   （可證實使用者層再黑屏假說）。回報至 GNOME/mutter#4111。
 
-### 15. 電池充過 90% 或出現 `ERROR: Old EC doesn't support sustainer`
+### 15. 電池充過 85%（預設 90%）或出現 `ERROR: Old EC doesn't support sustainer`
 
 * **症狀**：下達 `ectool chargecontrol normal 80 90` 出現 `ERROR: Old EC doesn't support sustainer`，
-  或是系統在重開機、S3 休眠喚醒後充超過 90%。
+  或是系統在重開機、休眠喚醒後充超過 85%（預設 90%）。
 * **根本原因**：
   1. HP Chromebook 13 G1 (Chell) 搭載 ChromeOS EC v1 韌體 (`chell_v1.9.425`)。EC v1 僅支援硬體狀態切換
      (`normal`, `idle`, `discharge`)，韌體內部不支援自動維持百分比區間的 Sustainer 演算法。
-  2. 在 S3 休眠期間或剛開機時，缺乏喚醒鉤子與開機提早啟動會留下暫態空窗，導致短暫以預設 normal 模式充電。
+  2. 在 休眠期間或剛開機時，缺乏喚醒鉤子與開機提早啟動會留下暫態空窗，導致短暫以預設 normal 模式充電。
 * **解決方案**：
   1. 使用專案強化後的 `c640-battery-limit.service` 與 `c640-ec-sleep.sh`：
 

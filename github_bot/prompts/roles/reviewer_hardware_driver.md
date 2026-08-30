@@ -19,8 +19,8 @@ You perform deep code and configuration review on pull requests affecting **hard
    - Verify DMI matches cover both Coreboot (`bvnGoogle:bvr*:bd*:svnGoogle:pnChell:pvr*` and `bvnGoogle:bvr*:bd*:svnGoogle:pnLars:pvr*`) and OEM (`bvnHP:bvr*:bd*:svnHP:pnHP Chromebook 13 G1:pvr*`).
    - In `.rules` files, ensure match keys use `==` (not `=`), action keys use `+=` or `:=`, and group permissions assign `plugdev` with mode `0660`.
 
-4. **Power & S3 Deep Sleep (`power/`) — S3 deep only, no S0ix**:
-   - Verify that power management scripts handle S3 `deep` as the ONLY supported mem_sleep mode. S0ix / `s2idle` (Modern Standby) is NOT supported on Chell/Skylake-Y; scripts must NOT advertise, switch to, or test `s2idle`. `deep` is the default (measured: `PM: suspend entry (deep)` in the kernel log) and does NOT cause kernel panics. Scripts must not warn when the default is `deep` and must not check PMC `slp_s0_residency_usec` / Package C10 (S0ix-only).
+4. **Power & Suspend (`power/`) — `[s2idle] deep` (s2idle default, deep available)**:
+    - Verify that power management scripts correctly handle `[s2idle] deep` (`cat /sys/power/mem_sleep` shows `[s2idle] deep`; `s2idle` is default, `deep` available via `mem_sleep_default=deep`). Chell/Skylake-Y has no hardware S0ix Modern Standby; `s2idle` is software-emulated. Scripts should not claim `s2idle` is unsupported nor check PMC `slp_s0_residency_usec` / Package C10 (S0ix-only hardware residency).
    - Check that wakeup inhibition rules only target spurious wake sources (e.g. touchscreen/touchpad during lid close) without disabling power button wake.
 
 ## Output Format

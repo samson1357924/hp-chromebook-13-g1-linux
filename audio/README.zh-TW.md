@@ -3,15 +3,17 @@
 
 # 🔊 Audio - HP Chromebook 13 G1 (CHELL, AVS)
 
-Chell 使用 **Intel AVS** (`snd_soc_avs`) 而非 SOF。獨立多卡架構：
+Chell 使用 **Intel AVS** (`snd_soc_avs`) 而非 SOF。獨立多卡架構（卡號為動態，請用 ALSA ID 而非固定數字）：
 
-| Card | ALSA ID | Codec/Function | Device | PCM | PipeWire 角色 |
+| 範例 Card | ALSA ID | Codec/Function | Device (範例) | PCM | PipeWire 角色 |
 |------|---------|---------------|--------|-----|--------------|
-| 0 | `avs_dmic` | DMIC 數位麥克風陣列 | `hw:0,0` | capture 2ch | Source `Internal Mic` |
+| 0 | `avs_dmic` | DMIC 數位麥克風陣列 | `hw:DMIC,0`（範例 `hw:0,0`） | capture 2ch | Source `Internal Mic` |
 | 1 | `avs_probe` | Compress-Offload probe | — | compress | — |
-| 2 | `avs_hdaudio` | Intel Skylake HDMI | `hw:2,0/1/2` | playback 3× HDMI | Sink `HDMI` |
-| 3 | `avs_nau8825` | Nuvoton NAU8825 耳機/耳麥 | `hw:3,0` | playback+capture | Sink `Headphones` / Source `Headset Mic` |
-| 4 | `avs_ssm4567` | ADI SSM4567 立體聲喇叭 | `hw:4,0` | playback 2ch | Sink `Speakers` |
+| 2 | `avs_hdaudio` | Intel Skylake HDMI | `hw:HDMI,0/1/2`（範例 `hw:2,0/1/2`） | playback 3× HDMI | Sink `HDMI` |
+| 3 | `avs_nau8825` | Nuvoton NAU8825 耳機/耳麥 | `hw:NAU8825,0`（範例 `hw:3,0`） | playback+capture | Sink `Headphones` / Source `Headset Mic` |
+| 4 | `avs_ssm4567` | ADI SSM4567 立體聲喇叭 | `hw:SSM4567,0`（範例 `hw:4,0`） | playback 2ch | Sink `Speakers` |
+
+> **卡號為動態** — `cat /proc/asound/cards` 可能顯示 `0=HDMI 1=DMIC 2=SSM4567 4=NAU8825` 等，勿寫死 `hw:4,0`。請用 `hw:SSM4567`/`hw:NAU8825`/`hw:DMIC`/`hw:HDMI` 或 `grep` 查卡號。範例：`alsaucm -c hw:SSM4567 dump text` / `amixer -c SSM4567 cget 'DSP Volume'`。
 
 > **PCM 索引**：AVS 多卡架構下每張卡皆為 `device 0`；UCM 中的 `PlaybackPCM "hw:${CardId},1"` 為錯誤模板，正確為 `hw:${CardId},0`。
 
@@ -31,9 +33,9 @@ PipeWire / WirePlumber ─┤
 | 症狀 | 原因 | 解法 |
 |------|------|------|
 | `wpctl status` 預設 Sink 為 HDMI，無聲 | HDMI 與喇叭同為 `priority 1000`，HDMI 先枚舉被鎖為 default | 部署 `50-avs-chell.conf` 提高喇叭優先級並 `wpctl set-default` |
-| `alsaucm -c hw:4 dump text` 報 `-2` | `conf.d/avs_ssm4567/AVS I2S SSM4567.conf` 缺失 | 執行 `./audio/install-audio.sh` 建立 fallback symlinks |
-| `amixer -c4` DSP Volume = 0 | 數位音量靜音 | `amixer -c4 cset 'DSP Volume' 80` 或重跑 install 腳本 |
-| 耳機插入無自動切換 | NAU8825 JackControl 未達閾值或 priority 未提升 | 檢查 `amixer -c3` JackControl，確認 WirePlumber priority 2000 |
+| `alsaucm -c hw:SSM4567 dump text` 報 `-2` | `conf.d/avs_ssm4567/AVS I2S SSM4567.conf` 缺失 | 執行 `./audio/install-audio.sh` 建立 fallback symlinks |
+| `amixer -c SSM4567` DSP Volume = 0 | 數位音量靜音 | `amixer -c SSM4567 cset 'DSP Volume' 80` 或重跑 install 腳本 |
+| 耳機插入無自動切換 | NAU8825 JackControl 未達閾值或 priority 未提升 | 檢查 `amixer -c NAU8825` JackControl，確認 WirePlumber priority 2000 |
 
 ## 快速使用
 
@@ -47,12 +49,12 @@ sudo ./audio/install-audio.sh --install
 sudo ./audio/install-audio.sh --check      # 僅檢查
 sudo ./audio/install-audio.sh --uninstall  # 回滾
 
-# 驗證
-speaker-test -D plughw:4,0 -c2 -l1          # 喇叭 (立體聲, 必須 plughw 避免 mono 陷阱)
-speaker-test -D plughw:3,0 -c2 -l1          # 耳機
-arecord -D plughw:0,0 -d2 -f S16_LE -r48000 -c2 /tmp/mic.wav && aplay -D plughw:4,0 /tmp/mic.wav
-wpctl status                                # 確認 HiFi profiles 已載入
-alsaucm -c hw:4 dump text | head -n 40      # 確認 Verb.HiFi 正常
+# 驗證（請用 ALSA ID，卡號為動態）
+speaker-test -D plughw:SSM4567,0 -c2 -l1          # 喇叭 (立體聲, 必須 plughw 避免 mono 陷阱)
+speaker-test -D plughw:NAU8825,0 -c2 -l1          # 耳機
+arecord -D plughw:DMIC,0 -d2 -f S16_LE -r48000 -c2 /tmp/mic.wav && pw-play /tmp/mic.wav
+wpctl status                                      # 確認 HiFi profiles 已載入
+alsaucm -c hw:SSM4567 dump text | head -n 40      # 確認 Verb.HiFi 正常
 ```
 
 ## 腳本與配置
@@ -75,4 +77,4 @@ alsaucm -c hw:4 dump text | head -n 40      # 確認 Verb.HiFi 正常
 
 - **alsa-lib 搜尋路徑**：僅查 `conf.d/${Driver}/${CardLongName}.conf` 與 `conf.d/${Driver}/${Driver}.conf`，不會查 DMI 名；必須建立 `AVS I2S SSM4567.conf` 與 `avs_ssm4567.conf` 兩個 fallback。
 - **stereo-fallback 陷阱**：UCM 載入失敗時 PipeWire 僅有 `stereo-fallback`，此時所有 Sink 同優先級 1000，易被 HDMI 搶佔。
-- **plughw vs hw**：AVS SSM4567 的 `hw:4,0` 僅接受 2ch S24_LE，`aplay -D hw:4,0 Front_Center.wav` (mono) 會報 `Channels count non available`，請用 `plughw:4,0` 或 `speaker-test -c2`。
+- **plughw vs hw**：AVS SSM4567 的 `hw:SSM4567,0` 僅接受 2ch S24_LE，`aplay -D hw:SSM4567,0 Front_Center.wav` (mono) 會報 `Channels count non available`，請用 `plughw:SSM4567,0` 或 `speaker-test -c2`。
