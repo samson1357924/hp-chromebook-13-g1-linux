@@ -97,6 +97,11 @@ run_graphics() {
     "$SCRIPT_DIR/scripts/fix-graphics.sh"
 }
 
+run_graphics_uninstall() {
+    make_executable "$SCRIPT_DIR/scripts/fix-graphics.sh"
+    "$SCRIPT_DIR/scripts/fix-graphics.sh" --uninstall || true
+}
+
 run_check() {
     make_executable "$SCRIPT_DIR/scripts/detect-hardware.sh"
     "$SCRIPT_DIR/scripts/detect-hardware.sh"
@@ -112,12 +117,14 @@ run_uninstall() {
     make_executable "$SCRIPT_DIR/keyboard/install-keyboard.sh" \
         "$SCRIPT_DIR/audio/install-audio.sh" \
         "$SCRIPT_DIR/power/install-power.sh" \
-        "$SCRIPT_DIR/ec/install-ec.sh" || true
+        "$SCRIPT_DIR/ec/install-ec.sh" \
+        "$SCRIPT_DIR/scripts/fix-graphics.sh" || true
     local failed=0
     "$SCRIPT_DIR/keyboard/install-keyboard.sh" --uninstall || failed=1
     "$SCRIPT_DIR/audio/install-audio.sh" --uninstall || failed=1
     "$SCRIPT_DIR/power/install-power.sh" --uninstall || failed=1
     "$SCRIPT_DIR/ec/install-ec.sh" --uninstall || failed=1
+    run_graphics_uninstall || failed=1
     if [ "$failed" -ne 0 ]; then
         log_error "One or more components failed to uninstall; check log."
         return 1

@@ -39,6 +39,7 @@ Samsung SDC415A QHD+ 面板之原生解析度為 $3200 \times 1800$ @ 60 Hz。
 在 Intel Skylake-Y GT2 (Core m3/m5/m7 6Yxx 系列 / HD Graphics 515) 架構中，GPU 顯示引擎依靠 **Core Display Clock (CDCLK)** 將記憶體中的影格緩衝區寫入顯示管線 FIFO：
 
 Skylake 支援的 CDCLK 階梯頻率（依 `drivers/gpu/drm/i915/display/intel_cdclk.c` `skl_cdclk_table[]`；`Max 675000 kHz` 經 `i915_cdclk_info` 實機驗證）：
+
 * 308.57 MHz
 * **337.50 MHz**（開機預設低功耗時鐘）
 * **450.00 MHz**（滿足 361.31 MHz 像素時鐘之最低必要頻率）
@@ -56,16 +57,19 @@ $$\text{CDCLK} \ge \text{Pixel Clock}$$
 ## 3. 根因剖析：GOP Fastboot 無縫接管陷阱 (Root Cause Analysis)
 
 ### 3.1 韌體初始化階段
+
 1. MrChromebox UEFI / Coreboot GOP 韌體在開機通電時，將 eDP 顯示初始化在 **`CDCLK = 337.5 MHz`**（推斷的 Skylake 預設低功耗階梯；`drm.debug=0` 下無直接 337.5 MHz 日誌，以 `min cdclk 361310 → 450000` 重算與 FIFO 現象間接推斷）。
 2. GOP 韌體透過基礎幀緩衝（`simple-framebuffer` / `simpledrm`）顯示開機標誌與 GRUB 選單。
 
 ### 3.2 核心 Fastboot 無縫接管
+
 1. 當 Linux 核心啟動並載入 `i915` 驅動時，驅動偵測到 GOP 已建立顯示管線。
 2. 為了避免開機閃爍，`i915` 預設啟用 *fastboot*（無縫接管）機制，直接沿用現有硬體狀態，**不主動觸發完整的 CRTC Modeset 重設**。
 3. 因此，驅動在模組載入當下並未重新計算與調整 CDCLK，**CDCLK 仍舊鎖定在推斷的 337.5 MHz**（Skylake 預設低功耗階梯，無直接日誌；以 `min cdclk 361310 → 450000` 重算與 FIFO 現象間接推斷）。
 4. 當面板進入完整的 $3200 \times 1800$ @ 60Hz 輸出（$361.31\text{ MHz}$）時，頻寬瞬間不足（範例日誌，實際時間戳依開機而異）：
-   ```text
-   [    7.587274] i915 0000:00:02.0: [drm] *ERROR* CPU pipe A FIFO underrun
+
+    ```text
+    [    7.587274] i915 0000:00:02.0: [drm] *ERROR* CPU pipe A FIFO underrun
    [    8.082974] i915 0000:00:02.0: [drm] *ERROR* CPU pipe A FIFO underrun
    ```
 
@@ -92,6 +96,7 @@ options i915 enable_psr=0 enable_fbc=0 enable_dc=0
 由於 `i915` 驅動會在真正的 CRTC 啟閉與 Modeset 流程中重新計算所需時鐘，只要對顯示介面發送一次極短的 DPMS 關閉/開啟訊號，即可迫使驅動自動將 CDCLK 提升至 **450.0 MHz**：
 
 **透過 Mutter DBus（Wayland 環境）**：
+
 ```bash
 # 取得 GDM 登入畫面 session UID
 GDM_UID=$(id -u gdm 2>/dev/null || id -u gdm-greeter 2>/dev/null || id -u gdm-greeter-2 2>/dev/null || echo 60579)
@@ -111,6 +116,7 @@ sudo -u $(id -nu $GDM_UID) DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$GDM_UID
 ```
 
 **透過虛擬終端切換 (VT Switch)**：
+
 ```bash
 sudo chvt 2 && sleep 1 && sudo chvt 1
 ```
@@ -118,11 +124,13 @@ sudo chvt 2 && sleep 1 && sudo chvt 1
 ### 5.2 驗證方法
 
 讀取 debugfs 核心時鐘狀態：
+
 ```bash
 sudo cat /sys/kernel/debug/dri/1/i915_cdclk_info
 ```
 
 預期正常輸出：
+
 ```text
 Current CD clock frequency: 450000 kHz
 Max CD clock frequency:     675000 kHz
@@ -130,6 +138,7 @@ Max pixel clock frequency:  675000 kHz
 ```
 
 確認核心日誌不再產生 FIFO underrun：
+
 ```bash
 sudo dmesg | grep -iE 'underrun|fifo'
 ```
