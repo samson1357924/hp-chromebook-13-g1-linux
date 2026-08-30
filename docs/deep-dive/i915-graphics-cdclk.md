@@ -38,7 +38,7 @@ According to the Detailed Timing Descriptor (DTD) via `i915_display_info`:
 
 On Intel Skylake-Y GT2 (Core m3/m5/m7 6Yxx / HD Graphics 515), the GPU display engine uses the **Core Display Clock (CDCLK)** to feed the display pipe FIFOs from memory.
 
-Supported Skylake CDCLK frequency steps:
+Supported Skylake CDCLK frequency steps (per `drivers/gpu/drm/i915/display/intel_cdclk.c` `skl_cdclk_table[]`; `Max 675000 kHz` verified via `i915_cdclk_info` on this device):
 * 308.57 MHz
 * **337.50 MHz** (Default low-power boot clock)
 * **450.00 MHz** (Required minimum for 361.31 MHz Pixel Clock)
@@ -56,15 +56,15 @@ If $\text{CDCLK} < \text{Pixel Clock}$ ($337.5\text{ MHz} < 361.31\text{ MHz}$),
 ## 3. The Root Cause: GOP Fastboot Handover Trap
 
 ### 3.1 Firmware Initialization
-1. MrChromebox UEFI / Coreboot GOP initializes the eDP display at power-on with **`CDCLK = 337.5 MHz`** (standard default for Skylake power envelope).
+1. MrChromebox UEFI / Coreboot GOP initializes the eDP display at power-on with **`CDCLK = 337.5 MHz`** (inferred Skylake default low-power step; no direct 337.5 MHz log on this kernel with `drm.debug=0`, inferred via `min cdclk 361310 → 450000` recalculation and FIFO underruns).
 2. GOP displays the initial boot logo / GRUB menu using basic framebuffers (`simple-framebuffer` / `simpledrm`).
 
 ### 3.2 Kernel Fastboot Seamless Takeover
 1. When Linux boots and loads `i915`, the driver detects an active display pipeline configured by the GOP firmware.
 2. By default, `i915` uses *fastboot* (seamless takeover) to avoid screen flicker during boot.
 3. Because fastboot avoids a full CRTC modeset, **`i915` does not recalculate or elevate CDCLK upon initial module load**.
-4. Consequently, CDCLK remains at **`337.5 MHz`**.
-5. As the display begins driving full $3200 \times 1800$ @ 60Hz ($361.31\text{ MHz}$), the pipe immediately underruns:
+4. Consequently, CDCLK remains at the inferred **`337.5 MHz`**.
+5. As the display begins driving full $3200 \times 1800$ @ 60Hz ($361.31\text{ MHz}$), the pipe immediately underruns (example log, actual timestamps vary):
    ```text
    [    7.587274] i915 0000:00:02.0: [drm] *ERROR* CPU pipe A FIFO underrun
    [    8.082974] i915 0000:00:02.0: [drm] *ERROR* CPU pipe A FIFO underrun

@@ -11,11 +11,19 @@ log_info() { echo "[INFO] $*"; }
 log_success() { echo "[OK] $*"; }
 log_warn() { echo "[WARN] $*"; }
 log_error() { echo "[FAIL] $*"; }
+# Note: log helpers intentionally use $* (not "$@") for single-line messages; caller passes one string.
 
 get_cdclk_khz() {
-    for f in /sys/kernel/debug/dri/0/i915_cdclk_info /sys/kernel/debug/dri/1/i915_cdclk_info; do
-        if [ -r "$f" ]; then
-            grep -i "Current CD clock frequency" "$f" 2> /dev/null | awk '{print $5}'
+    local f val
+    for f in /sys/kernel/debug/dri/0/i915_cdclk_info /sys/kernel/debug/dri/1/i915_cdclk_info /sys/kernel/debug/dri/*/i915_cdclk_info; do
+        [ -e "$f" ] || continue
+        # Try direct cat first (works when running as root via sudo/service), fallback to sudo cat
+        val="$(cat "$f" 2>/dev/null | awk '/Current CD clock frequency/ {print $5}')"
+        if [ -z "$val" ] || [ "$val" = "0" ]; then
+            val="$(sudo -n cat "$f" 2>/dev/null | awk '/Current CD clock frequency/ {print $5}')"
+        fi
+        if [ -n "$val" ] && [ "$val" -gt 0 ] 2>/dev/null; then
+            echo "$val"
             return 0
         fi
     done
@@ -25,12 +33,19 @@ get_cdclk_khz() {
 cycle_dpms() {
     log_info "Attempting DPMS display cycle to trigger CDCLK elevation..."
     local gdm_bus=""
-    local gdm_pid
-    gdm_pid="$(pgrep -u 60578 gnome-shell 2>/dev/null || pgrep -u 60579 gnome-shell 2>/dev/null || pgrep -f 'gnome-shell --mode=gdm' 2>/dev/null | head -1 || true)"
-    
-    if [ -n "$gdm_pid" ]; then
-        local gdm_uid
-        gdm_uid="$(ps -o uid= -p "$gdm_pid" 2>/dev/null | tr -d ' ' || echo 60579)"
+    local gdm_uid=""
+    local gdm_pid=""
+    # Robust GDM UID detection: try id(1) for known gdm accounts, then pgrep fallback
+    gdm_uid="$(id -u gdm 2>/dev/null || id -u gdm-greeter 2>/dev/null || id -u gdm-greeter-2 2>/dev/null || echo "")"
+    if [ -z "$gdm_uid" ]; then
+        gdm_pid="$(pgrep -f 'gnome-shell --mode=gdm' 2>/dev/null | head -1 || true)"
+        if [ -n "$gdm_pid" ]; then
+            gdm_uid="$(ps -o uid= -p "$gdm_pid" 2>/dev/null | tr -d ' ' || echo "")"
+        fi
+    else
+        gdm_pid="$(pgrep -u "$gdm_uid" gnome-shell 2>/dev/null | head -1 || true)"
+    fi
+    if [ -n "$gdm_uid" ]; then
         gdm_bus="unix:path=/run/user/${gdm_uid}/bus"
         
         if [ -e "/run/user/${gdm_uid}/bus" ]; then
@@ -47,13 +62,14 @@ cycle_dpms() {
     fi
 
     # Fallback to VT toggle if DBus method wasn't available or CDCLK didn't change
-    local cur_clk
+    local cur_clk cur_vt
     cur_clk="$(get_cdclk_khz)"
     if [ -n "$cur_clk" ] && [ "$cur_clk" -lt 400000 ] 2>/dev/null; then
         log_info "DBus toggle not sufficient; using VT toggle fallback..."
+        cur_vt="$(fgconsole 2>/dev/null || echo 1)"
         sudo chvt 2 2>/dev/null || true
         sleep 1
-        sudo chvt 1 2>/dev/null || true
+        sudo chvt "$cur_vt" 2>/dev/null || sudo chvt 1 2>/dev/null || true
     fi
 
     cur_clk="$(get_cdclk_khz)"
@@ -67,17 +83,22 @@ cycle_dpms() {
 install_autofix_service() {
     log_section "Installing Chell CDCLK Auto-Fix Service"
     local service_file="/etc/systemd/system/chell-cdclk-fix.service"
-    
+    local installed_script="/usr/local/bin/chell-cdclk-fix.sh"
+
+    # Install a portable copy so the service does not depend on the git checkout path
+    sudo install -Dm755 "$SCRIPT_DIR/fix-graphics.sh" "$installed_script"
+
     sudo bash -c "cat > '$service_file'" << SERVICE_EOF
 [Unit]
 Description=HP Chromebook 13 G1 CDCLK Fastboot Fix
-After=gdm.service display-manager.service
+After=gdm.service display-manager.service graphical.target
 Wants=gdm.service display-manager.service
+ConditionPathExists=/sys/kernel/debug
 
 [Service]
 Type=oneshot
-ExecStartPre=/bin/sleep 2
-ExecStart=$SCRIPT_DIR/fix-graphics.sh --cycle-dpms-if-needed
+ExecStartPre=/usr/bin/sleep 3
+ExecStart=$installed_script --cycle-dpms-if-needed
 RemainAfterExit=yes
 
 [Install]
@@ -87,7 +108,7 @@ SERVICE_EOF
     sudo chmod 644 "$service_file"
     sudo systemctl daemon-reload
     sudo systemctl enable chell-cdclk-fix.service
-    log_success "Enabled chell-cdclk-fix.service to automate CDCLK elevation on boot."
+    log_success "Enabled chell-cdclk-fix.service to automate CDCLK elevation on boot (installed to $installed_script)."
 }
 
 # Parse CLI arguments
@@ -109,6 +130,15 @@ case "${1:-}" in
     --install-service)
         install_autofix_service
         exit 0
+        ;;
+    -h|--help)
+        echo "Usage: $0 [--cycle-dpms|--cycle-dpms-if-needed|--install-service]"
+        exit 0
+        ;;
+    --*)
+        log_error "Unknown option: $1"
+        echo "Usage: $0 [--cycle-dpms|--cycle-dpms-if-needed|--install-service]" >&2
+        exit 2
         ;;
 esac
 
