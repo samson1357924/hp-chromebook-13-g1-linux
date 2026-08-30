@@ -1,4 +1,4 @@
-# .shellcheckrc - ShellCheck configuration for HP Pro c640 Linux Enablement
+# .shellcheckrc - ShellCheck configuration for HP Chromebook 13 G1 (Chell) Linux Enablement
 # Target Shell dialect
 shell=bash
 

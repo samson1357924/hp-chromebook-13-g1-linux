@@ -21,6 +21,7 @@ while [ $# -gt 0 ]; do
     esac
 done
 if [ -n "$OUTPUT" ]; then
+    echo "NOTE: report may contain hardware IDs; review before sharing." >&2
     exec > >(tee -a "$OUTPUT") 2>&1
 fi
 

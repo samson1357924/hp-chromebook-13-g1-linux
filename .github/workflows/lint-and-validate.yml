@@ -11,6 +11,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   shell-and-workflows:
     name: Shell Scripts & Workflows Lint
@@ -63,14 +66,21 @@ jobs:
           # Strict compilation of hwdb binary
           systemd-hwdb --root="${SANDBOX_DIR}" --strict update
 
-          # Query assertion 1: Google Coreboot DMI (Dratini)
-          QUERY_DMI1="evdev:atkbd:dmi:bvnGoogle:bvr13579:bd01/01/2021:svnGoogle:pnDratini:pvr1.0"
+          # Query assertion 1: Google Coreboot DMI (Chell - primary)
+          QUERY_DMI1="evdev:atkbd:dmi:bvnGoogle:bvr13579:bd01/01/2021:svnGoogle:pnChell:pvr1.0"
           HWDB_OUT1=$(systemd-hwdb --root="${SANDBOX_DIR}" query "${QUERY_DMI1}")
-          echo "Query Output for Dratini (Coreboot):"
+          echo "Query Output for Chell (Coreboot):"
           echo "${HWDB_OUT1}"
           echo "${HWDB_OUT1}" | grep -q "KEYBOARD_KEY_ea=back"
           echo "${HWDB_OUT1}" | grep -q "KEYBOARD_KEY_e7=refresh"
           echo "${HWDB_OUT1}" | grep -q "KEYBOARD_KEY_a0=mute"
+
+          # Query assertion 1b: Legacy Dratini DMI (compatibility)
+          QUERY_DMI1B="evdev:atkbd:dmi:bvnGoogle:bvr13579:bd01/01/2021:svnGoogle:pnDratini:pvr1.0"
+          HWDB_OUT1B=$(systemd-hwdb --root="${SANDBOX_DIR}" query "${QUERY_DMI1B}")
+          echo "Query Output for Dratini (legacy compat):"
+          echo "${HWDB_OUT1B}"
+          echo "${HWDB_OUT1B}" | grep -q "KEYBOARD_KEY_ea=back"
 
           # Query assertion 2: HP OEM DMI (HP Chromebook 13 G1)
           QUERY_DMI2="evdev:atkbd:dmi:bvnHP:bvr13579:bd01/01/2021:svnHP:pnHP Chromebook 13 G1:pvr1.0"
@@ -80,7 +90,7 @@ jobs:
           echo "${HWDB_OUT2}" | grep -q "KEYBOARD_KEY_ea=back"
           echo "${HWDB_OUT2}" | grep -q "KEYBOARD_KEY_a0=mute"
 
-          echo "All hwdb key mappings verified across Coreboot & OEM DMI strings!"
+          echo "All hwdb key mappings verified across Chell/Coreboot & OEM DMI strings!"
 
       - name: Validate udev Rules Syntax
         shell: bash

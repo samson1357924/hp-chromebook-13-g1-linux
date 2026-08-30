@@ -1,5 +1,7 @@
 <!-- markdownlint-disable MD013 MD022 MD031 MD032 -->
 
+[English](README.md) | [繁體中文](README.zh-TW.md)
+
 # HP Chromebook 13 G1 (CHELL) Linux 安裝與顯示黑屏故障排除紀錄
 
 本專案記錄在 **HP Chromebook 13 G1**（Google 開發代號：`CHELL`）上安裝與運行 Linux（Ubuntu 26.04 LTS）的硬體規格、問題排查過程及解決方案。

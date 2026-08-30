@@ -13,7 +13,7 @@
 ## 💻 規格
 * **型號**: [HP Chromebook 13 G1](https://support.hp.com/tw-zh/product/product-specs/hp-chromebook-13-g1/model/10467908)
 * **處理器**: m3-6Y30 / m5-6Y57 / **m7-6Y75** (本機 m7-6Y75), HD Graphics 515
-* **顯示**: 13.3" 3200×1800 或 1920×1080 (本機 1920×1080)
+* **顯示**: 13.3" 3200×1800 (本機 SDC415A QHD+) — 部分批次為 1920×1080
 * **音訊**: Sunrise Point-LP HD Audio + AVS (`SSM4567`/`NAU8825`/`DMIC`)
 * **網路**: Intel 7265 Wi-Fi 5 + BT 4.2 | **EC**: `/dev/cros_ec` | **韌體**: MrChromebox `2606.1`
 
