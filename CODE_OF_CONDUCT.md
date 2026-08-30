@@ -1,5 +1,6 @@
-# SPDX-License-Identifier: MIT
-# SPDX-FileCopyrightText: 2026 Samson <https://github.com/samson1357924>
+<!-- markdownlint-disable MD013 -->
+<!-- SPDX-License-Identifier: MIT -->
+<!-- SPDX-FileCopyrightText: 2026 Samson <https://github.com/samson1357924> -->
 
 # Contributor Covenant Code of Conduct
 
