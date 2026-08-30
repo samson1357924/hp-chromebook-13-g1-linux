@@ -12,6 +12,31 @@
 
 ---
 
+## 🖥️ 顯示與螢幕問題 (Graphics & Display)
+
+### 0. 安裝時選「Try or Install Ubuntu」黑畫面卡在 logo
+* **根本原因**：`i915` KMS 驅動與 chell 韌體 GOP/VBT 時序相衝。
+* **解決方法**：GRUB 選單選擇 **`Ubuntu (safe graphics)`** 或在開機參數手動加入 `nomodeset`。詳見 [PITFALL-01: Safe Graphics / nomodeset](pitfalls/01-safe-graphics-nomodeset.md)。
+
+### 0.1 安裝後仍使用 simpledrm，無 i915 硬體加速 (`lsmod` 無 i915)
+* **根本原因**：安裝程式將 `nomodeset` 殘留在 `/etc/default/grub`。
+* **解決方法**：執行 `./scripts/fix-graphics.sh` 或手動移除 `nomodeset` 後更新 GRUB 並重開機。
+
+### 0.2 開機時 i915 驅動已載入，但面板全黑屏（CDCLK 337.5MHz FIFO Underrun 陷阱）
+* **症狀**：螢幕背光已亮，`lsmod | grep i915` 正常，SSH、GDM3 登入器與 GNOME Wayland 背景皆正常，但實體面板全黑無畫面。核心日誌出現 `[drm] *ERROR* CPU pipe A FIFO underrun`。
+* **根本原因**：MrChromebox UEFI GOP 韌體開機時將 CDCLK 設定於 337.5 MHz。Linux `i915` 驅動開機時採用 fastboot 無縫接管，未在初始階段觸發完整 Modeset 重算時鐘。由於 3200x1800@60Hz 螢幕像素時鐘需 361.31 MHz（> 337.5 MHz），導致開機瞬間顯示管線 FIFO 欠載當鎖。
+* **解決方法**：
+  ```bash
+  # 線上即時復原（發送 DPMS 訊號觸發 Modeset 重算時鐘至 450 MHz）
+  ./scripts/fix-graphics.sh --cycle-dpms
+
+  # 一鍵持久化設定（安裝開機自動修復服務 + 配置 i915 參數）
+  sudo ./scripts/fix-graphics.sh
+  ```
+* **深度剖析**：詳見 [docs/zh-TW/deep-dive/i915-graphics-cdclk.md](deep-dive/i915-graphics-cdclk.md)。
+
+---
+
 ## 🔊 音效問題 (Audio)
 
 ### 1. 系統音效顯示 "Dummy Output" (虛擬輸出)，完全無聲

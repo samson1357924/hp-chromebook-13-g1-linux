@@ -74,11 +74,17 @@ GRUB_CMDLINE_LINUX_DEFAULT="quiet splash i915.enable_psr=0 i915.enable_fbc=0 i91
 * **`i915.enable_fbc=0`**：停用幀緩衝區壓縮，避免 3200x1800 記憶體緩衝區爭用。
 * **`i915.enable_dc=0`**：停用 Display C-States，防止顯示核心進入過深休眠導致動態時鐘不足。
 
-### 步驟 2：更新 GRUB 並重開機
+### 步驟 2：更新 GRUB 與模組參數並安裝自動修復服務
+亦可直接執行專案自動化腳本一鍵配置與驗證：
 ```bash
+# 自動移除 nomodeset、設定 i915 參數並安裝開機 CDCLK 修復服務
+sudo ./scripts/fix-graphics.sh
 sudo update-grub
 sudo reboot
 ```
+
+> [!NOTE]
+> **冷開機 Fastboot 陷阱防護**：MrChromebox UEFI GOP 開機時將 CDCLK 置於 337.5 MHz，Linux `i915` 無縫接管（fastboot）在冷開機時可能未觸發 Modeset 重算時鐘。腳本安裝的 `chell-cdclk-fix.service` 會在 GDM 啟動時自動檢查 CDCLK，若未滿 450 MHz 則自動觸發極短的 DPMS 重設，確保螢幕每次冷開機皆必定亮屏。
 
 ---
 
