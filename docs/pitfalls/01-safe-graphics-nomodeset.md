@@ -62,4 +62,4 @@ glxinfo | grep "renderer string"  # 應為 Mesa Intel HD Graphics 515
 
 * `scripts/fix-graphics.sh` - 一鍵移除 `nomodeset`
 * `docs/TROUBLESHOOTING.md#nomodeset` - 常見問題速查
-* 參考: 本機 `ubuntu-13g1` 實測 (BIOS MrChromebox 2606.1, kernel 7.0.0-14, Wayland)
+* 參考: 本機實測 (BIOS MrChromebox 2606.1, kernel 7.0.0-14, Wayland — hostname 已省略)

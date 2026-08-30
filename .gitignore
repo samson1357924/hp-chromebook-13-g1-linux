@@ -26,6 +26,7 @@ debian/*.substvars
 
 # Diagnostics (hardware reports may contain serials & PII)
 c640-diagnostic-*
+chell-diagnostic-*
 diagnostic-*.tar*
 
 # Secrets & credentials

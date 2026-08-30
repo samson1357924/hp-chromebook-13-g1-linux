@@ -38,11 +38,23 @@ path = ".github/**"
 SPDX-FileCopyrightText = "2026 Samson <https://github.com/samson1357924>"
 SPDX-License-Identifier = "MIT"
 
-# Documentation and Guides
+# Documentation and Guides (markdown only; assets are CC0)
 [[annotations]]
-path = ["docs/**", "**/*.md", "*.md"]
+path = ["docs/**/*.md", "docs/*.md", "**/*.md", "*.md"]
 SPDX-FileCopyrightText = "2026 Samson <https://github.com/samson1357924>"
 SPDX-License-Identifier = "MIT"
+
+# Security and community (MIT to avoid conflict with docs/**/*.md)
+[[annotations]]
+path = ["SECURITY.md", "CODE_OF_CONDUCT.md"]
+SPDX-FileCopyrightText = "2026 Samson <https://github.com/samson1357924>"
+SPDX-License-Identifier = "MIT"
+
+# Mailmap (CC0 for non-code mapping)
+[[annotations]]
+path = [".mailmap"]
+SPDX-FileCopyrightText = "2026 Samson <https://github.com/samson1357924>"
+SPDX-License-Identifier = "CC0-1.0"
 
 # Dotfiles and linter configurations
 [[annotations]]
@@ -58,7 +70,7 @@ path = [
 SPDX-FileCopyrightText = "2026 Samson <https://github.com/samson1357924>"
 SPDX-License-Identifier = "CC0-1.0"
 
-# MkDocs overrides and assets
+# MkDocs overrides and assets (binary / style assets are CC0)
 [[annotations]]
 path = [
     "overrides/**",
@@ -71,5 +83,11 @@ SPDX-License-Identifier = "CC0-1.0"
 # Audio WirePlumber profile for AVS Chell topology
 [[annotations]]
 path = "audio/wireplumber/**"
+SPDX-FileCopyrightText = "2026 Samson <https://github.com/samson1357924>"
+SPDX-License-Identifier = "MIT"
+
+# Top-level license umbrella and package metadata
+[[annotations]]
+path = ["LICENSE", "pyproject.toml", "tests/**", ".env.example"]
 SPDX-FileCopyrightText = "2026 Samson <https://github.com/samson1357924>"
 SPDX-License-Identifier = "MIT"

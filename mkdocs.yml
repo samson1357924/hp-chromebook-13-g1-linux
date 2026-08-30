@@ -169,7 +169,7 @@ nav: # fallback for non-i18n builds
       - Troubleshooting: TROUBLESHOOTING.md
       - Uninstall: UNINSTALL.md
   - Pitfalls:
-      - Safe Graphics: pitfalls/01-safe-graphics-nomodeset.md
+      - Safe Graphics (nomodeset): pitfalls/01-safe-graphics-nomodeset.md
       - iGPU Alternatives: pitfalls/02-igpu-install-alternatives.md
   - Deep Dive:
       - AVS Audio (Chell): deep-dive/intel-avs-audio.md
