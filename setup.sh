@@ -36,7 +36,7 @@ show_menu() {
     echo "  [1] Complete Setup (Keyboard + Audio + Power + EC + Graphics Fix)"
     echo "  [2] Audio Diagnostics Only (AVS SSM4567/NAU8825/DMIC + PipeWire)"
     echo "  [3] Keyboard Top-Row Mapping Only (systemd-hwdb)"
-    echo "  [4] Power Management & EC Control (Battery 90% + S3)"
+    echo "  [4] Power Management & EC Control (Battery 85% local / 90% default + suspend [s2idle] deep)"
     echo "  [5] Graphics Fix Only (remove nomodeset, enable i915)"
     echo "  [6] Full Hardware & Diagnostics Check"
     echo "  [7] Generate Diagnostic Bundle (sysreport.tar.gz)"

@@ -1,6 +1,6 @@
 # Power & Suspend
 
-Chell supports traditional S3 `deep` sleep (not S0ix Modern Standby).
+Chell exposes `[s2idle] deep` (s2idle default, deep available; no hardware S0ix Modern Standby) — `cat /sys/power/mem_sleep` shows `[s2idle] deep`.
 
 - TLP profile: `power/tlp/99-hp-chell.conf`
 - Modprobe: `power/modprobe.d/99-hp-chell-power.conf` (i915 psr/fbc/dc)

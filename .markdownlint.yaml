@@ -1,4 +1,4 @@
-# .markdownlint.yaml - MarkdownLint configuration for HP Pro c640 Linux Enablement
+# .markdownlint.yaml - MarkdownLint configuration for HP Chromebook 13 G1 (Chell) Linux Enablement
 default: true
 
 # MD013/line-length: Allow longer lines in tables, code blocks and headings

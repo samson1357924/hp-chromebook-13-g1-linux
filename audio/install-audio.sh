@@ -107,16 +107,16 @@ check_audio_status() {
         fi
     done
 
-    log_info "ALSA Mixers:"
-    for c in 4 3 0; do
-        if amixer -c"$c" info > /dev/null 2>&1; then
-            log_info "  Card $c: $(cat /proc/asound/card$c/id 2> /dev/null) - $(amixer -c"$c" scontrols 2> /dev/null | head -n 3 | tr '\n' ';')"
+    log_info "ALSA Mixers (using ALSA IDs - card numbers are dynamic):"
+    for id in SSM4567 NAU8825 DMIC HDMI; do
+        if amixer -c"$id" info > /dev/null 2>&1; then
+            log_info "  Card $id: $(amixer -c"$id" info 2> /dev/null | head -n1) - $(amixer -c"$id" scontrols 2> /dev/null | head -n 3 | tr '\n' ';')"
         fi
     done
-    if amixer -c4 cget name='DSP Volume' 2> /dev/null | grep -q "values=0"; then
-        log_warn "  Card 4 DSP Volume is 0 (muted)!"
+    if amixer -cSSM4567 cget name='DSP Volume' 2> /dev/null | grep -q "values=0"; then
+        log_warn "  SSM4567 DSP Volume is 0 (muted)!"
     else
-        log_success "  Card 4 DSP Volume non-zero"
+        log_success "  SSM4567 DSP Volume non-zero"
     fi
 
     log_info "WirePlumber Configs:"
@@ -127,7 +127,7 @@ check_audio_status() {
     if command -v wpctl > /dev/null 2>&1; then
         log_info "PipeWire Sinks/Sources:"
         wpctl status 2> /dev/null | sed -n '/Audio/,/Video/p' | head -n 40 | while read -r line; do log_info "  $line"; done || true
-        if wpctl status 2> /dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -qi "ssm4567"; then
+        if wpctl status 2> /dev/null | grep -qi "ssm4567"; then
             log_success "  PipeWire Speaker sink (SSM4567) active"
         else
             log_warn "  Speaker sink (SSM4567) not found - check UCM/WirePlumber"
@@ -135,8 +135,8 @@ check_audio_status() {
     fi
 
     if command -v alsaucm > /dev/null 2>&1; then
-        log_info "UCM verb check:"
-        for card in 4 3 0 2; do
+        log_info "UCM verb check (using ALSA IDs):"
+        for card in SSM4567 NAU8825 HDMI DMIC; do
             if alsaucm -c "hw:$card" dump text 2>&1 | grep -q "Verb.HiFi"; then
                 log_success "  hw:$card Verb.HiFi OK"
             else
@@ -236,37 +236,37 @@ fix_ucm_pcm_index() {
 }
 
 fix_mixers() {
-    log_info "Unmuting & setting ALSA mixers ..."
+    log_info "Unmuting & setting ALSA mixers (using ALSA IDs) ..."
     if [ "${DRY_RUN:-0}" = "1" ]; then
-        log_dryrun "amixer -c4 cset name='DSP Volume' 120 / name='Left Master Playback Volume' 191"
-        log_dryrun "amixer -c3 cset name='Headphone Volume' 63,63"
+        log_dryrun "amixer -cSSM4567 cset name='DSP Volume' 1500000000 / name='Left Master Playback Volume' 191"
+        log_dryrun "amixer -cNAU8825 cset name='Headphone Volume' 63,63"
         return 0
     fi
     # SSM4567 - speakers (use name= syntax; sset fallback for locale)
     # Note: DSP Volume range is 0..2147483647 (need large value, 120 would be mute)
-    if amixer -c4 info > /dev/null 2>&1; then
-        sudo -u "$(get_real_user)" amixer -c4 cset name='DSP Volume' 1500000000 2> /dev/null || amixer -c4 cset name='DSP Volume' 1500000000 2> /dev/null || amixer -c4 sset 'DSP' 80% 2> /dev/null || true
-        if amixer -c4 cget name='DSP Volume' 2> /dev/null | grep -q "values=0"; then
-            amixer -c4 cset name='DSP Volume' 2147483647 2> /dev/null || true
+    if amixer -cSSM4567 info > /dev/null 2>&1; then
+        sudo -u "$(get_real_user)" amixer -cSSM4567 cset name='DSP Volume' 1500000000 2> /dev/null || amixer -cSSM4567 cset name='DSP Volume' 1500000000 2> /dev/null || amixer -cSSM4567 sset 'DSP' 80% 2> /dev/null || true
+        if amixer -cSSM4567 cget name='DSP Volume' 2> /dev/null | grep -q "values=0"; then
+            amixer -cSSM4567 cset name='DSP Volume' 2147483647 2> /dev/null || true
         fi
-        amixer -c4 cset name='Left Master Playback Volume' 191 2> /dev/null || amixer -c4 sset 'Left Master' 80% 2> /dev/null || true
-        amixer -c4 cset name='Right Master Playback Volume' 191 2> /dev/null || amixer -c4 sset 'Right Master' 80% 2> /dev/null || true
-        amixer -c4 cset name='Left Speaker Switch' on 2> /dev/null || true
-        amixer -c4 cset name='Right Speaker Switch' on 2> /dev/null || true
-        amixer -c4 cset name='Left Amplifier Boost Switch' on 2> /dev/null || true
-        amixer -c4 cset name='Right Amplifier Boost Switch' on 2> /dev/null || true
-        log_success "  Card 4 (SSM4567) mixer unmuted"
+        amixer -cSSM4567 cset name='Left Master Playback Volume' 191 2> /dev/null || amixer -cSSM4567 sset 'Left Master' 80% 2> /dev/null || true
+        amixer -cSSM4567 cset name='Right Master Playback Volume' 191 2> /dev/null || amixer -cSSM4567 sset 'Right Master' 80% 2> /dev/null || true
+        amixer -cSSM4567 cset name='Left Speaker Switch' on 2> /dev/null || true
+        amixer -cSSM4567 cset name='Right Speaker Switch' on 2> /dev/null || true
+        amixer -cSSM4567 cset name='Left Amplifier Boost Switch' on 2> /dev/null || true
+        amixer -cSSM4567 cset name='Right Amplifier Boost Switch' on 2> /dev/null || true
+        log_success "  SSM4567 mixer unmuted"
     fi
     # NAU8825 - headphones
-    if amixer -c3 info > /dev/null 2>&1; then
-        amixer -c3 cset name='Headphone Volume' 63,63 2> /dev/null || amixer -c3 sset 'Headphone' 100% 2> /dev/null || true
-        amixer -c3 cset name='Mic Volume' 255 2> /dev/null || amixer -c3 sset 'Mic' 100% 2> /dev/null || true
-        log_success "  Card 3 (NAU8825) mixer set"
+    if amixer -cNAU8825 info > /dev/null 2>&1; then
+        amixer -cNAU8825 cset name='Headphone Volume' 63,63 2> /dev/null || amixer -cNAU8825 sset 'Headphone' 100% 2> /dev/null || true
+        amixer -cNAU8825 cset name='Mic Volume' 255 2> /dev/null || amixer -cNAU8825 sset 'Mic' 100% 2> /dev/null || true
+        log_success "  NAU8825 mixer set"
     fi
     # DMIC (range 0..2147483647, needs large value)
-    if amixer -c0 info > /dev/null 2>&1; then
-        amixer -c0 cset name='DMIC Volume' 1500000000 2> /dev/null || amixer -c0 sset 'DMIC' 80% 2> /dev/null || amixer -c0 cset name='DMIC Volume' 2147483647 2> /dev/null || true
-        log_success "  Card 0 (DMIC) mixer set"
+    if amixer -cDMIC info > /dev/null 2>&1; then
+        amixer -cDMIC cset name='DMIC Volume' 1500000000 2> /dev/null || amixer -cDMIC sset 'DMIC' 80% 2> /dev/null || amixer -cDMIC cset name='DMIC Volume' 2147483647 2> /dev/null || true
+        log_success "  DMIC mixer set"
     fi
     sudo alsactl store 2> /dev/null || true
 }
@@ -351,7 +351,7 @@ install_audio() {
             sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" systemctl --user restart pipewire wireplumber 2> /dev/null || true
             # Poll for graph rebuild (WirePlumber needs 2-5s)
             for _ in 1 2 3 4 5 6 7 8; do
-                if sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" wpctl status 2> /dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -qi "ssm4567"; then
+                if sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" wpctl status 2> /dev/null | grep -qi "ssm4567"; then
                     break
                 fi
                 sleep 1
@@ -359,7 +359,7 @@ install_audio() {
             log_success "PipeWire & WirePlumber restarted for '$real_user'."
         elif systemctl --user restart wireplumber 2> /dev/null; then
             for _ in 1 2 3 4 5 6 7 8; do
-                if wpctl status 2> /dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -qi "ssm4567"; then break; fi
+                if wpctl status 2> /dev/null | grep -qi "ssm4567"; then break; fi
                 sleep 1
             done
             log_success "WirePlumber restarted."
@@ -373,20 +373,18 @@ install_audio() {
         if LC_ALL=C aplay -l 2> /dev/null | grep -q "SSM4567"; then
             log_success "ALSA card 'SSM4567' present."
         fi
-        if command -v wpctl > /dev/null 2>&1 && wpctl status 2> /dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -qi "ssm4567"; then
+        if command -v wpctl > /dev/null 2>&1 && wpctl status 2> /dev/null | grep -qi "ssm4567"; then
             log_success "PipeWire Speaker sink (SSM4567) verified!"
         else
             log_warn "Speaker sink not yet visible - check 'wpctl status' after re-login"
         fi
-        # Show default sink from Sinks section only
+        # Show default sink
         local default_sink
-        default_sink=$(wpctl status 2> /dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -E '\*.*alsa_output' | head -n1 | sed 's/^[[:space:]]*//')
+        default_sink=$(wpctl status 2> /dev/null | grep -E '\*.*alsa_output' | head -n1 | sed 's/^[[:space:]]*//')
         if [ -n "$default_sink" ]; then
-            log_info "Default sink (Sinks section): $default_sink"
-        else
-            log_info "Default sink: $(wpctl status 2> /dev/null | grep -E '\*.*alsa_output' | head -n1 | sed 's/^[[:space:]]*//')"
+            log_info "Default sink: $default_sink"
         fi
-        log_info "Test: speaker-test -D plughw:4,0 -c2 -l1  (or pw-play /usr/share/sounds/alsa/Front_Left.wav)"
+        log_info "Test: speaker-test -D plughw:SSM4567,0 -c2 -l1  (or pw-play /usr/share/sounds/alsa/Front_Left.wav)"
     fi
 
     log_success "AVS audio configuration complete! 🔊"

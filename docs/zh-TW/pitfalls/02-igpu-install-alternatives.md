@@ -86,8 +86,10 @@ cat /proc/cmdline | grep -E "i915.enable_psr=0|i915.enable_fbc=0|i915.enable_dc=
 lsmod | grep i915 && echo "i915 已載入"
 readlink /sys/class/drm/card*/device/driver | grep -q i915 && echo "DRM 為 i915"
 glxinfo | grep "OpenGL renderer"  # Mesa Intel(R) HD Graphics 515
+# port_clock 來源為 i915_display_info；CDCLK 以 FIFO 近零 + 450 MHz 推斷
 sudo cat /sys/kernel/debug/dri/*/i915_display_info | grep -E "port_clock|lane_count"
-journalctl -k -b | grep -ci "FIFO underrun"  # 應為 0
+# 預期: port_clock=540000 lane_count=4, mode "3200x1800": 60 361310
+journalctl -k -b | grep -E "FIFO underrun|Atomic update failure"  # 預期近零: 近 3 次啟動 0 次，9 boots 內偶發單次
 cat /sys/class/backlight/intel_backlight/max_brightness  # 187，確認 i915 背光
 ```
 
@@ -102,7 +104,7 @@ cat /sys/class/backlight/intel_backlight/max_brightness  # 187，確認 i915 背
 **證據**：2026-08-29, kernel 7.0.0-30,
 `i915_display_info` `mode "3200x1800": 60 361310 ... port_clock=540000
 lane_count=4`, `i915_dmc_info` `DC3->DC5 count: 0`,
-`journalctl -k` FIFO 0（未修前 6/6 boots 皆有 FIFO）。
+`journalctl -k` FIFO 近零（近 3 次啟動 0 次，9 boots 內偶發單次；未修前 6/6 boots 皆有 FIFO）。
 
 ---
 
@@ -182,7 +184,7 @@ Patch `intel_cdclk.c` 將 Skylake-Y CDCLK 下限改 450MHz，或重編 VBT
 
 1. HP Chromebook 13 G1, MrChromebox 2606.1, Ubuntu 26.04.1 USB，GRUB 套用 A 開機。
 2. Live 執行 `lsmod | grep i915`、`glxinfo | grep renderer`、
-   `journalctl -k | grep -i "FIFO\|underrun"`（應 0）、
+    `journalctl -k | grep -E "FIFO underrun|Atomic update failure"`（預期近零：近 3 次啟動 0 次，9 boots 內偶發單次）、
    `cat /sys/class/backlight/intel_backlight/max_brightness`。
 3. 安裝重啟，確認 `cat /proc/cmdline` 保留三參數且無 `nomodeset`。
 4. 與 D 路徑對比：`nomodeset` Live → `fix-graphics.sh` → 同驗證。

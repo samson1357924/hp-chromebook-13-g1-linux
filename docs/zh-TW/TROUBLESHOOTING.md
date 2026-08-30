@@ -263,7 +263,7 @@
 
 ### 14. 開蓋喚醒後螢幕全黑（需按鍵/點擊才亮）
 
-* **症狀**：盒蓋休眠（S3 `deep`）後打開，系統已喚醒（`PM: suspend exit`）
+* **症狀**：盒蓋休眠（`[s2idle] deep`，s2idle 預設）後打開，系統已喚醒（`PM: suspend exit`）
   但面板**全黑**，直到按鍵或點擊才亮。不是當機——輸入一到鎖定畫面即正常。
 * **根因（2026-08-18 兩個候選機制）**：
   1. **GNOME 使用者層再次黑屏**（最可能，符合「按鍵即恢復」特徵）：
@@ -296,14 +296,14 @@
   `org.gnome.SettingsDaemon.Power` 是否有 resume 後再度關閉螢幕的事件
   （可證實使用者層再黑屏假說）。回報至 GNOME/mutter#4111。
 
-### 15. 電池充過 90% 或出現 `ERROR: Old EC doesn't support sustainer`
+### 15. 電池充過 85%（預設 90%）或出現 `ERROR: Old EC doesn't support sustainer`
 
 * **症狀**：下達 `ectool chargecontrol normal 80 90` 出現 `ERROR: Old EC doesn't support sustainer`，
-  或是系統在重開機、S3 休眠喚醒後充超過 90%。
+  或是系統在重開機、休眠喚醒後充超過 85%（預設 90%）。
 * **根本原因**：
   1. HP Chromebook 13 G1 (Chell) 搭載 ChromeOS EC v1 韌體 (`chell_v1.9.425`)。EC v1 僅支援硬體狀態切換
      (`normal`, `idle`, `discharge`)，韌體內部不支援自動維持百分比區間的 Sustainer 演算法。
-  2. 在 S3 休眠期間或剛開機時，缺乏喚醒鉤子與開機提早啟動會留下暫態空窗，導致短暫以預設 normal 模式充電。
+  2. 在 休眠期間或剛開機時，缺乏喚醒鉤子與開機提早啟動會留下暫態空窗，導致短暫以預設 normal 模式充電。
 * **解決方案**：
   1. 使用專案強化後的 `c640-battery-limit.service` 與 `c640-ec-sleep.sh`：
 

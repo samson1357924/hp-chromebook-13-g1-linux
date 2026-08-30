@@ -36,26 +36,26 @@ for n in data:
 ### 2.3 `alsaucm dump`
 
 ```bash
-alsaucm -c hw:4 dump text | head -n 40  # Speakers
-alsaucm -c hw:3 dump text | head -n 40  # Headphones
-alsaucm -c hw:0 dump text | head -n 40  # DMIC
+alsaucm -c hw:SSM4567 dump text | head -n 40  # Speakers
+alsaucm -c hw:NAU8825 dump text | head -n 40  # Headphones
+alsaucm -c hw:DMIC dump text | head -n 40  # DMIC
 # Expect: Verb.HiFi with PlaybackPCM hw:${CardId},0
 ```
 
 ### 2.4 `amixer` (use name= syntax)
 
 ```bash
-amixer -c4 cget name='DSP Volume'        # should be non-zero (0..2147483647)
-amixer -c4 cset name='DSP Volume' 1500000000
-amixer -c3 cget name='Headphone Jack'    # jack detection
+amixer -cSSM4567 cget name='DSP Volume'        # should be non-zero (0..2147483647)
+amixer -cSSM4567 cset name='DSP Volume' 1500000000
+amixer -cNAU8825 cget name='Headphone Jack'    # jack detection
 ```
 
 ### 2.5 `aplay` / `speaker-test`
 
 ```bash
-speaker-test -D plughw:4,0 -c2 -l1        # speakers (must be plughw + -c2)
-speaker-test -D plughw:3,0 -c2 -l1        # headphones
-arecord -D plughw:0,0 -d2 -f S16_LE -r48000 -c2 /tmp/mic.wav && aplay -D plughw:4,0 /tmp/mic.wav
+speaker-test -D plughw:SSM4567,0 -c2 -l1        # speakers (must be plughw + -c2)
+speaker-test -D plughw:NAU8825,0 -c2 -l1        # headphones
+arecord -D plughw:DMIC,0 -d2 -f S16_LE -r48000 -c2 /tmp/mic.wav && aplay -D plughw:SSM4567,0 /tmp/mic.wav
 ```
 
 ### 2.6 `dmesg` (AVS)
@@ -68,9 +68,9 @@ sudo dmesg | grep -i -E "avs|ssm4567|nau8825"
 
 * [ ] `wpctl status Sinks:` shows `* HDMI` not `* Speakers (SSM4567)`
 * [ ] `pw-dump` priority.session `1000` for both HDMI and Speakers (should be 1500/500)
-* [ ] `alsaucm -c hw:4 dump text` reports `-2` ENOENT
+* [ ] `alsaucm -c hw:SSM4567 dump text` reports `-2` ENOENT
 * [ ] `ls -l /usr/share/alsa/ucm2/conf.d/avs_ssm4567/AVS I2S SSM4567.conf` missing
-* [ ] `amixer -c4 cget name='DSP Volume'` shows `values=0`
+* [ ] `amixer -cSSM4567 cget name='DSP Volume'` shows `values=0`
 * [ ] `/etc/wireplumber/wireplumber.conf.d/50-avs-chell.conf` missing
 
 ## 4. Test Matrix (priority × UCM × jack)
@@ -78,11 +78,11 @@ sudo dmesg | grep -i -E "avs|ssm4567|nau8825"
 | Scenario | wpctl Sinks | UCM verb | Playback |
 |---|---|---|---|
 | No fix, no headphone | `* HDMI` (priority tie) | fallback | HDMI silent, speakers silent (muted + wrong sink) |
-| No fix, headphone in | `* HDMI` still | fallback | headphone may work via hw:3,0 direct but not via PipeWire |
+| No fix, headphone in | `* HDMI` still | fallback | headphone may work via hw:NAU8825,0 direct but not via PipeWire |
 | Fixed, no headphone | `* Built-in Speakers (SSM4567)` priority 1500 | HiFi | speakers ok |
 | Fixed, headphone in | `* Headphones (NAU8825)` priority 2000 auto-switch | HiFi | headphones ok, speakers auto-muted via priority |
 
-Note: `speaker-test -D hw:4,0` needs `-c2`; mono wav via `hw` fails, use `plughw`.
+Note: `speaker-test -D hw:SSM4567,0` needs `-c2`; mono wav via `hw` fails, use `plughw`.
 
 ## 5. Quick Fix
 

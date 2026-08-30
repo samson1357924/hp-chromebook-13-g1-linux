@@ -1,12 +1,12 @@
 {
-  "name": "HP-Pro-c640-Linux-AI-Bot",
+  "name": "HP-Chromebook-13-G1-Linux-AI-Bot",
   "version": "1.0.0",
-  "description": "Multi-agent PR code review, hardware safety analysis, and issue triage for HP Pro c640 Chromebook Linux Enablement.",
+  "description": "Multi-agent PR code review, hardware safety analysis, and issue triage for HP Chromebook 13 G1 (Chell) Linux Enablement.",
   "llmConfigFile": "./config/LLM_config.example.json",
   "defaultProvider": "opencode",
-  "commentMarker": "<!-- C640_LINUX_AI_REVIEW_REPORT -->",
-  "triageMarker": "<!-- C640_LINUX_AI_TRIAGE_REPORT -->",
-  "commandMarker": "<!-- C640_LINUX_AI_COMMAND_REPORT -->",
+  "commentMarker": "<!-- CHELL_LINUX_AI_REVIEW_REPORT -->",
+  "triageMarker": "<!-- CHELL_LINUX_AI_TRIAGE_REPORT -->",
+  "commandMarker": "<!-- CHELL_LINUX_AI_COMMAND_REPORT -->",
   "defaultBranchCandidates": [
     "main",
     "master"

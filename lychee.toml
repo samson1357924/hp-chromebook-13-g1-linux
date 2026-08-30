@@ -1,4 +1,4 @@
-# lychee.toml - Link checker configuration for HP Pro c640 Linux Enablement
+# lychee.toml - Link checker configuration for HP Chromebook 13 G1 (Chell) Linux Enablement
 root_dir = "."
 format = "detailed"
 

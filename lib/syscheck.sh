@@ -114,11 +114,11 @@ check_avs_firmware_files() {
 }
 
 check_avs_mixer() {
-    if amixer -c4 cget name='DSP Volume' 2> /dev/null | grep -q "values=0"; then
-        log_warn "Card 4 DSP Volume is 0 (muted) - run audio/install-audio.sh"
+    if amixer -cSSM4567 cget name='DSP Volume' 2> /dev/null | grep -q "values=0"; then
+        log_warn "SSM4567 DSP Volume is 0 (muted) - run audio/install-audio.sh"
         return 1
     else
-        log_success "Card 4 DSP Volume OK"
+        log_success "SSM4567 DSP Volume OK"
         return 0
     fi
 }

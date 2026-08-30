@@ -3,18 +3,18 @@
 # HP Chromebook 13 G1 Linux GitHub AI Bot
 
 Production multi-agent GitHub review and issue triage bot for
-**HP Chromebook 13 G1 (Google Dratini / Hatch platform) Linux Enablement**.
+**HP Chromebook 13 G1 (Google Chell / Lars platform) Linux Enablement**.
 
 ---
 
 ## 🌟 Key Features
 
 1. **🔒 Secure Execution Boundary (`pull_request_target`)**:
-   - Executes trusted bot code from the default branch (`main` / `master`).
-   - Fetches immutable PR commits into isolated refs
-     (`refs/c640-bot/review-base`, `refs/c640-bot/review-head`) with SHA validation.
-   - Untrusted fork code is never checked out or executed; fork PR diffs are fetched through the
-     GitHub API and only reviewed when opened by a trusted author (OWNER / MEMBER / COLLABORATOR).
+    - Executes trusted bot code from the default branch (`main` / `master`).
+    - Fetches immutable PR commits into isolated refs
+      (`refs/chell-bot/review-base`, `refs/chell-bot/review-head`) with SHA validation.
+    - Untrusted fork code is never checked out or executed; fork PR diffs are fetched through the
+      GitHub API and only reviewed when opened by a trusted author (OWNER / MEMBER / COLLABORATOR).
 
 2. **⚡ Multi-Provider LLM Engine**:
    - Native integration with **OpenCode Zen** (`https://opencode.ai/zen/v1/`) and **CPA** (`responses` API).

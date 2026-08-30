@@ -2,7 +2,7 @@
 
 # 電源與休眠
 
-Chell 支援傳統 S3 `deep` 休眠（非 S0ix Modern Standby）。
+Chell 暴露 `[s2idle] deep`（s2idle 預設，deep 可用；無硬體 S0ix Modern Standby）— `cat /sys/power/mem_sleep` 顯示 `[s2idle] deep`。
 
 - TLP 設定：`power/tlp/99-hp-chell.conf`
 - Modprobe：`power/modprobe.d/99-hp-chell-power.conf` (i915 psr/fbc/dc)

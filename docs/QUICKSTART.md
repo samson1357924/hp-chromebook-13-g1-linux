@@ -22,7 +22,7 @@ chmod +x setup.sh
 | **Full install (keyboard + audio + power + EC + graphics fix)** | `./setup.sh --all` |
 | **Audio diagnostics (AVS SSM4567/NAU8825)** | `./setup.sh --audio` or `./audio/install-audio.sh` |
 | **Keyboard top-row mapping** | `./setup.sh --keyboard` |
-| **Power & EC (90% battery + S3)** | `./setup.sh --power` / `./setup.sh --ec` |
+| **Power & EC (85% battery, 90% default + suspend wake hook)** | `./setup.sh --power` / `./setup.sh --ec` |
 | **Graphics fix (remove nomodeset)** | `./setup.sh --graphics` or `./scripts/fix-graphics.sh` |
 | **Hardware diagnostics** | `./setup.sh --check` |
 | **Dry-run preview** | `./setup.sh --all --dry-run` |
