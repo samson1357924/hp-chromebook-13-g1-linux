@@ -48,7 +48,7 @@ Complete Linux support for **HP Chromebook 13 G1** (Board: `chell` / Baseboard: 
 | **Intel Graphics** | 🟢 **Verified (2026-08-29)** | `i915` (`psr=0 fbc=0 dc=0`) | `i915` bound, `Mesa HD 515` `direct rendering: Yes`, FIFO near-zero, CDCLK 450MHz — see [verification.md](verification.md). |
 | **Keyboard Backlight & Top Row** | 🟢 **Verified (2026-08-29)** | `cros_ec` + `udev hwdb` / `keyd` | Top row mapped; backlight `/sys/class/leds/chromeos::kbd_backlight` (max 100) verified — see [verification.md](verification.md). |
 | **EC Battery & Fan** | 🟢 **Working** | ChromeOS EC LPC (`c640-ec-control` + `c640-battery-limit`, `BATTERY_LIMIT=85` local / 90 default) | 85% limit daemon, AC bypass, suspend hook, fan silent mode. |
-| **Suspend** | 🟢 **s2idle lid cycle verified** | ACPI `[s2idle] deep` (s2idle default, deep available, no HW S0ix) | Lid suspend/resume verified 2026-08-18; deep via `mem_sleep_default=deep` — see [verification.md](verification.md). |
+| **Suspend** | ⚠️ **Driver bound** | ACPI `[s2idle] deep` (s2idle default, deep available, no HW S0ix) | `s2idle` default, `deep` available; lid cycle pending full verification — see [verification.md](verification.md). |
 | **Dual Type-C** | ⚠️ **Charging OK** | USB-PD + DP 1.2 Alt Mode | PD charging OK; **Type-C display not verified** (see [verification.md](verification.md)). |
 
 !!! note "Last verified"

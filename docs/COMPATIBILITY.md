@@ -16,15 +16,15 @@ Hardware support under Linux for **HP Chromebook 13 G1** (Google **`chell`**, ba
 | **Speakers** | SSM4567 I2S Amp (AVS) | `avs_ssm4567` | 🟢 **Working** | `aplay -l` Card0 SSM4567, PipeWire sink OK |
 | **Headset Jack** | Nuvoton NAU8825 (I2C) | `avs_nau8825` | 🟢 **Working** | Card1 NAU8825, headset playback+capture OK |
 | **DMIC Array** | Digital Mic | `avs_dmic` | 🟢 **Working** | Card2 DMIC, `arecord -l` OK |
-| **Wi-Fi** | Intel 7265 AC [8086:095a] | `iwlwifi` | 🟢 **Working** | `wlp1s0` Wi-Fi 5 AC, connected |
-| **Bluetooth** | Intel 7265 BT `8087:0a2a` | `btusb` | 🟢 **Present** | BT device present |
+| **Wi-Fi** | Intel 7265 AC [8086:095a] | `iwlwifi` | ⚠️ **Driver bound** | `wlp1s0` present, connected — limited throughput test |
+| **Bluetooth** | Intel 7265 BT `8087:0a2a` | `btusb` | ⚠️ **Driver bound** | BT device present — limited test |
 | **Touchpad** | ELAN0000:00 I2C | `elan_i2c` / `i2c_hid` | ⚠️ **Driver bound** | `ELAN0000:00` + `Synopsys DesignWare` I2C OK, gestures not verified |
 | **Camera** | Quanta HP Truevision HD `0408:5060` | `uvcvideo` | 🟢 **Present** | `PipeWire` v4l2 nodes 41/48 present |
 | **Storage** | eMMC 32GB + HFS256G39 via JMS567 USB | `sdhci` / `xhci` | 🟢 **Working** | SD `9d2b`, external 238GB OK |
 | **Keyboard Top-Row** | ChromeOS EC top-row | `cros_ec` + `hwdb`/`keyd` | 🟢 **Working** | `90-chromebook-keyboard.hwdb` + `keyd/cros.conf` mapped, verified via `evtest`. |
 | **Display Backlight** | `intel_backlight` max 187 | `i915` | 🟢 **Present** | `/sys/class/backlight/intel_backlight` via `i915` eDP-1 |
 | **EC / PD** | ChromeOS EC LPC + PD | `cros_ec` / `cros_pd` | 🟢 **Present** | `/dev/cros_ec` + `/dev/cros_pd` OK |
-| **Sleep** | `[s2idle] deep` (s2idle default, deep available) | `s2idle` | 🟢 **Available** | Kernel exposes both `s2idle` (default) and `deep`; `deep` available via `mem_sleep_default=deep` or `echo deep > /sys/power/mem_sleep`. |
+| **Sleep** | `[s2idle] deep` (s2idle default, deep available) | `s2idle` | ⚠️ **Driver bound** | `s2idle` default, `deep` available via `mem_sleep_default=deep` — lid cycle pending full verification (see [Verification](verification.md)) |
 | **Fingerprint** | — | — | ⛔ **N/A** | G1 has no fingerprint sensor |
 
 ---
