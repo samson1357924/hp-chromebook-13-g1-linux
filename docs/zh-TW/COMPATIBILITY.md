@@ -18,15 +18,15 @@
 | **立體聲喇叭** | SSM4567 I2S Amp (AVS) | `avs_ssm4567` | 🟢 **正常** | `aplay -l` Card SSM4567, PipeWire sink 正常 |
 | **3.5mm 耳機孔** | Nuvoton NAU8825 (I2C) | `avs_nau8825` | 🟢 **正常** | Card NAU8825, 耳機播放+錄音正常 |
 | **內建數位麥克風** | Digital Mic | `avs_dmic` | 🟢 **正常** | Card DMIC, `arecord -l` 正常 |
-| **Wi-Fi** | Intel 7265 AC [8086:095a] | `iwlwifi` | 🟢 **正常** | `wlp1s0` Wi-Fi 5 AC 已連線 |
-| **藍牙** | Intel 7265 BT `8087:0a2a` | `btusb` | 🟢 **存在** | 藍牙裝置存在 |
+| **Wi-Fi** | Intel 7265 AC [8086:095a] | `iwlwifi` | ⚠️ **驅動已綁定** | `wlp1s0` 存在、已連線 — 吞吐量測試有限 |
+| **藍牙** | Intel 7265 BT `8087:0a2a` | `btusb` | ⚠️ **驅動已綁定** | 藍牙裝置存在 — 測試有限 |
 | **觸控板** | ELAN0000:00 I2C | `elan_i2c` / `i2c_hid` | ⚠️ **驅動已綁定** | `ELAN0000:00` + `Synopsys DesignWare` I2C 正常，手勢未驗證 |
 | **視訊鏡頭** | Quanta HP Truevision HD `0408:5060` | `uvcvideo` | 🟢 **存在** | `PipeWire` v4l2 節點 41/48 存在 |
 | **儲存** | eMMC 32GB + HFS256G39 via JMS567 USB | `sdhci` / `xhci` | 🟢 **正常** | SD `9d2b`, 外接 238GB 正常 |
 | **鍵盤頂排** | ChromeOS EC top-row | `cros_ec` + `hwdb`/`keyd` | 🟢 **正常** | `90-chromebook-keyboard.hwdb` + `keyd/cros.conf` 已映射，`evtest` 已驗證。 |
 | **螢幕背光** | `intel_backlight` max 187 | `i915` | 🟢 **存在** | `/sys/class/backlight/intel_backlight` 經 `i915` eDP-1 |
 | **EC / PD** | ChromeOS EC LPC + PD | `cros_ec` / `cros_pd` | 🟢 **存在** | `/dev/cros_ec` + `/dev/cros_pd` 正常 |
-| **待機休眠** | `[s2idle] deep`（s2idle 預設，deep 可用） | `s2idle` | 🟢 **可用** | 核心同時暴露 `s2idle`（預設）與 `deep`；`deep` 可經 `mem_sleep_default=deep` 或 `echo deep > /sys/power/mem_sleep` 啟用，無硬體 S0ix。 |
+| **待機休眠** | `[s2idle] deep`（s2idle 預設，deep 可用） | `s2idle` | ⚠️ **驅動已綁定** | `s2idle` 預設，`deep` 可用 — 上蓋週期待完整驗證（見[實測驗證](verification.md)） |
 | **指紋辨識** | — | — | ⛔ **無硬體** | G1 無指紋感測器 |
 
 ---
