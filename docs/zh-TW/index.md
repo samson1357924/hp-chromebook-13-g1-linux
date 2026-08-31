@@ -46,7 +46,7 @@
 | **Intel UHD 顯示與硬解** | 🟢 **已驗證 (2026-08-29)** | `i915` (`psr=0 fbc=0 dc=0`) | `i915` 已綁定 `card1`、`Mesa HD 515` `direct rendering: Yes`、FIFO 近零（近 3 次啟動 0 次，9 boots 內偶發單次）、CDCLK 450MHz — 見 [verification.md](verification.md)。 |
 | **鍵盤背光 & 頂排功能鍵** | 🟢 **已驗證 (2026-08-29)** | `cros_ec` + `udev hwdb` / `keyd` + `leds_cros_ec` / `61-kbd-backlight.rules` | 頂排已映射；鍵盤背光 `/sys/class/leds/chromeos::kbd_backlight` (max 100) 經 sysfs 與 GNOME `Power.Keyboard` `StepUp/Down/Toggle` 已實測，支援 `c640-ec-control kblight` — 見 [verification.md](verification.md)。 |
 | **EC 電池保護與風扇控制** | 🟢 **正常運作** | ChromeOS EC LPC (`c640-ec-control` + `c640-battery-limit`, `BATTERY_LIMIT=85` 本機/預設 90%) | 85% 上限守護服務、0 mA AC 旁路、休眠喚醒鉤子、風扇靜音模式。 |
-| **待機休眠** | 🟢 **s2idle 盒蓋週期已驗證** | ACPI `[s2idle] deep`（s2idle 預設，deep 可用，無硬體 S0ix） | 2026-08-18 實測盒蓋休眠/喚醒（零錯誤，預設 s2idle）；**按鍵/指紋喚醒未測試**；開蓋後需按鍵才亮。`deep` 可經 `mem_sleep_default=deep` 啟用 — 見 [verification.md](verification.md)。 |
+| **待機休眠** | ⚠️ **驅動已綁定** | ACPI `[s2idle] deep`（s2idle 預設，deep 可用，無硬體 S0ix） | `s2idle` 預設，`deep` 可用；上蓋週期待完整驗證 — 見 [verification.md](verification.md)。 |
 | **雙 Type-C 輸出與快充** | ⚠️ **充電正常** | USB-PD + DP 1.2 Alt Mode | PD 充電正常；**Type-C 外接螢幕未驗證**（見 [verification.md](verification.md)）。 |
 
 !!! note "最後驗證"
