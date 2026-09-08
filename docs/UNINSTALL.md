@@ -12,7 +12,7 @@ All files installed via `setup.sh` are backed up to `/var/backups/cros-enablemen
 
 Removes:
 1. Keyboard `hwdb` `/etc/udev/hwdb.d/90-chromebook-keyboard.hwdb`
-2. Audio AVS diagnostics (no UCM to remove on chell, only WirePlumber tweaks if installed)
+2. Audio AVS configs (`/etc/wireplumber/wireplumber.conf.d/50-avs-chell.conf`, `50-disable-suspend.conf` and `/usr/share/alsa/ucm2/conf.d/avs_*` fallback symlinks; PCM index fixes are rolled back via manifest)
 3. Power/EC tweaks, `c640-battery-limit`-style daemon
 4. Restores original backups
 
