@@ -41,10 +41,24 @@
 
 ## 🔊 Audio (AVS SSM4567 / NAU8825 / DMIC)
 
-### 4. No sound / Dummy Output
+### 4. No sound / default routed to HDMI (common on Chell AVS)
 
-* **Check**: `aplay -l` should show `SSM4567`, `NAU8825`, `DMIC`; `wpctl status` shows sinks
-* **Solution**: `systemctl --user restart wireplumber pipewire`; AVS needs no SOF UCM (unlike c640)
+* **Check**: `aplay -l` should show `SSM4567` (speakers), `NAU8825` (headset), `DMIC`; `*` in `wpctl status` should be `Built-in Speakers (SSM4567)`, not HDMI.
+* **Root cause**: see [audio/docs/root-cause.md](../audio/docs/root-cause.md) triple — HDMI steals `default`, missing UCM fallback (`alsaucm -c hw:SSM4567 dump text` fails `-2`), `DSP Volume=0` (range `0..2147483647`, `120` still mutes).
+* **Solution**:
+
+  ```bash
+  sudo ./audio/install-audio.sh --install
+  ./audio/diagnose-audio.sh
+  speaker-test -D plughw:SSM4567,0 -c2 -l1
+  ```
+
+  Chell uses Intel AVS (`snd_soc_avs`) and needs no SOF UCM (unlike c640 `sof-rt5682`).
+
+### 4.1 Speaker volume extremely low (`DSP Volume=0`)
+
+* **Root cause**: after reinstall/reboot `Left/Right Master` resets to `15/255 (-65dB)` and `DSP Volume` to `0` — effective mute with switches `[on]`.
+* **Solution**: re-run `sudo ./audio/install-audio.sh --install` (sets `Left/Right Master 191`, `DSP 1500000000`, `alsactl store`), then `wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.9`.
 
 ### 5. Headset mic not working
 

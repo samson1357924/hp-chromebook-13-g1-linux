@@ -25,16 +25,21 @@ sudo apt install -y build-essential meson ninja-build pkg-config \
                     libglib2.0-dev libgusb-dev libpixman-1-dev \
                     libgudev-1.0-dev libudev-dev libjson-glib-dev \
                     libgirepository1.0-dev gobject-introspection \
-                    fprintd libpam-fprintd firmware-sof-signed \
+                    fprintd libpam-fprintd linux-firmware \
                     pipewire wireplumber alsa-ucm-conf
 ```
+
+> [!NOTE]
+> Chell (HP Chromebook 13 G1) uses Intel AVS (`snd_soc_avs`), not SOF.
+> Audio firmware is `/lib/firmware/intel/avs/` from `linux-firmware`;
+> do not install `firmware-sof-signed` for audio.
 
 ### (2) Deploy Audio UCM Configuration
 
 ```bash
-sudo cp -r audio/ucm/ucm2/* /usr/share/alsa/ucm2/
-sudo alsactl init
-systemctl --user restart wireplumber
+sudo ./audio/install-audio.sh --install
+# Verifies AVS modules/firmware, UCM fallbacks, mixer unmute, WirePlumber priority.
+./audio/diagnose-audio.sh
 ```
 
 ### (3) Deploy Keyboard Top-Row Mapping

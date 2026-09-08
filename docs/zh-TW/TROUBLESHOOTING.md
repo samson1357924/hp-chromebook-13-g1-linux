@@ -39,23 +39,24 @@
 
 ## 🔊 音效問題 (Audio)
 
-### 1. 系統音效顯示 "Dummy Output" (虛擬輸出)，完全無聲
+### 1. 系統音效無聲 / 預設跑到 HDMI（Chell AVS 常見）
 
-* **根本原因**：標準發行版的 `alsa-ucm-conf` 尚未將 `sof-rt5682` 下游配置納入
-  主幹。PipeWire ACP 機制因 ASoC 晶片缺乏 Phantom Jack kcontrol 而誤判所有輸出
-  不可用， WirePlumber 只能選擇 off。
+* **檢查**：`aplay -l` 應有 `SSM4567`（喇叭）、`NAU8825`（耳機）、`DMIC`；`wpctl status` 的 `*` 應是 `Built-in Speakers (SSM4567)`，不是 HDMI。
+* **根本原因**：見 [audio/docs/root-cause.md](../../audio/docs/root-cause.md) 三件套 — HDMI 搶 `default`、UCM fallback 缺失（`alsaucm -c hw:SSM4567 dump text` 報 `-2`）、`DSP Volume=0`（範圍 `0..2147483647`，`120` 仍算 mute）。
 * **解決方法**：執行本專案一鍵安裝指令：
 
   ```bash
-  ./setup.sh --audio
+  sudo ./audio/install-audio.sh --install
+  ./audio/diagnose-audio.sh
+  speaker-test -D plughw:SSM4567,0 -c2 -l1
   ```
 
-### 2. 核心日誌出現 `cl_dsp_init: timeout with rom_status_reg`，音效卡遺失
+  Chell 使用 Intel AVS（`snd_soc_avs`），不需要 SOF UCM（與 c640 的 `sof-rt5682` 不同）。
 
-* **根本原因**：**Intel Management Engine (ME) 被關閉**。Intel Skylake SOF
-  DSP 韌體在開機與時脈初始化時強烈依賴 Intel ME 通訊。
-* **解決方法**：**嚴禁使用 me_cleaner 或在 UEFI 設定中停用 Intel ME**。請確保
-  MrChromebox UEFI 韌體中的 Intel ME 為啟用狀態。
+### 2. `amixer -cSSM4567` 音量極低或 `DSP Volume=0`，聽不到
+
+* **根本原因**：重裝/重啟後 `Left/Right Master` 被重置到 `15/255 (-65dB)`、`DSP Volume` 回到 `0`，等效靜音但開關顯示 `[on]`。
+* **解決方法**：重跑 `sudo ./audio/install-audio.sh --install`（會設 `Left/Right Master 191`、`DSP 1500000000` 並 `alsactl store`），再用 `wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.9` 拉大。
 
 ### 3. 耳機插入後喇叭仍出聲，或無法自動切換
 
@@ -299,7 +300,7 @@
      或 kernel 7.0 的 eDP 背光回歸（drm/i915/kernel#16791、#16825）。
      可能性較低——那些 bug 不會因按鍵而恢復。
 * **解決方法（本專案）**：`power/install-power.sh` 的 modprobe 調校
-  `options i915 enable_psr=0 enable_fbc=1 enable_guc=2` 是 repo 針對
+  `options i915 enable_psr=0 enable_fbc=0 enable_dc=0` 是 repo 針對
   休眠/喚醒黑屏的候選對策。2026-08-19 已安裝並重開機，但**未解決本機的
   黑屏問題**（仍須按鍵才亮——使用者已接受此行為；見
   [VERIFICATION.md](verification.md)）。如想試用請套用後重開機：
