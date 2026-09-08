@@ -20,7 +20,7 @@
 
 該指令會全自動執行：
 
-1. 移除 `/usr/share/alsa/ucm2/` 中的 `sof-rt5682` 自訂 UCM 設定檔。
+1. 移除音訊 AVS 設定（`/etc/wireplumber/wireplumber.conf.d/50-avs-chell.conf`、`50-disable-suspend.conf` 與 `/usr/share/alsa/ucm2/conf.d/avs_*` fallback symlink）。
 2. 移除 `/etc/udev/hwdb.d/90-chromebook-keyboard.hwdb` 並重整硬體資料庫。
 3. 移除 `/etc/udev/rules.d/60-cros-fp.rules`。
 4. 移除電源管理調校（logind 設定與休眠輔助）。
