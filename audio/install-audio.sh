@@ -377,7 +377,7 @@ install_audio() {
             # Best-effort: lock default sink to SSM4567 HiFi to clear stale stereo-fallback.
             # Takes the first sink in the Sinks: section (never a Device: entry).
             ssm_sink=$(sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" wpctl status 2> /dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -i "ssm4567" | head -n1 | sed -E 's/^[^0-9]*([0-9]+)\..*/\1/')
-            case "$ssm_sink" in ''|*[!0-9]*) ssm_sink="";; esac
+            case "$ssm_sink" in '' | *[!0-9]*) ssm_sink="" ;; esac
             if [ -n "$ssm_sink" ]; then
                 if sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" wpctl set-default "$ssm_sink" 2> /dev/null; then
                     log_info "Pinned default sink to SSM4567 ($ssm_sink)."
@@ -396,7 +396,7 @@ install_audio() {
                 sleep 1
             done
             ssm_sink=$(wpctl status 2> /dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -i "ssm4567" | head -n1 | sed -E 's/^[^0-9]*([0-9]+)\..*/\1/')
-            case "$ssm_sink" in ''|*[!0-9]*) ssm_sink="";; esac
+            case "$ssm_sink" in '' | *[!0-9]*) ssm_sink="" ;; esac
             if [ -n "$ssm_sink" ]; then
                 if wpctl set-default "$ssm_sink" 2> /dev/null; then
                     log_info "Pinned default sink to SSM4567 ($ssm_sink)."

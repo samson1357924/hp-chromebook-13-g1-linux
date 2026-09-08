@@ -42,7 +42,7 @@
 ### 1. 系統音效無聲 / 預設跑到 HDMI（Chell AVS 常見）
 
 * **檢查**：`aplay -l` 應有 `SSM4567`（喇叭）、`NAU8825`（耳機）、`DMIC`；`wpctl status` 的 `*` 應是 `Built-in Speakers (SSM4567)`，不是 HDMI。
-* **根本原因**：見 [audio/docs/root-cause.md](../../audio/docs/root-cause.md) 三件套 — HDMI 搶 `default`、UCM fallback 缺失（`alsaucm -c hw:SSM4567 dump text` 報 `-2`）、`DSP Volume=0`（範圍 `0..2147483647`，`120` 仍算 mute）。
+* **根本原因**：見 [audio/docs/root-cause.md](https://github.com/samson1357924/hp-chromebook-13-g1-linux/blob/main/audio/docs/root-cause.md) 三件套 — HDMI 搶 `default`、UCM fallback 缺失（`alsaucm -c hw:SSM4567 dump text` 報 `-2`）、`DSP Volume=0`（範圍 `0..2147483647`，`120` 仍算 mute）。
 * **解決方法**：執行本專案一鍵安裝指令：
 
   ```bash

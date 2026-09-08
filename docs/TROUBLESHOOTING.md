@@ -44,7 +44,7 @@
 ### 4. No sound / default routed to HDMI (common on Chell AVS)
 
 * **Check**: `aplay -l` should show `SSM4567` (speakers), `NAU8825` (headset), `DMIC`; `*` in `wpctl status` should be `Built-in Speakers (SSM4567)`, not HDMI.
-* **Root cause**: see [audio/docs/root-cause.md](../audio/docs/root-cause.md) triple — HDMI steals `default`, missing UCM fallback (`alsaucm -c hw:SSM4567 dump text` fails `-2`), `DSP Volume=0` (range `0..2147483647`, `120` still mutes).
+* **Root cause**: see [audio/docs/root-cause.md](https://github.com/samson1357924/hp-chromebook-13-g1-linux/blob/main/audio/docs/root-cause.md) triple — HDMI steals `default`, missing UCM fallback (`alsaucm -c hw:SSM4567 dump text` fails `-2`), `DSP Volume=0` (range `0..2147483647`, `120` still mutes).
 * **Solution**:
 
   ```bash
