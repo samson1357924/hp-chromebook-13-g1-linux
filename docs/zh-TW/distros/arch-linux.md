@@ -38,15 +38,19 @@ makepkg -si
 sudo pacman -S --needed base-devel meson ninja pkgconf glib2 \
                         libgusb pixman libgudev json-glib \
                         gobject-introspection fprintd \
-                        sof-firmware pipewire pipewire-pulse wireplumber alsa-ucm-conf
+                        linux-firmware pipewire pipewire-pulse wireplumber alsa-ucm-conf
 ```
+
+> [!NOTE]
+> Chell（HP Chromebook 13 G1）使用 Intel AVS（`snd_soc_avs`），不是 SOF。
+> 音訊韌體是 `linux-firmware` 提供的 `/lib/firmware/intel/avs/`；請勿為音訊安裝 `sof-firmware`。
 
 ### (2) 部署音訊 UCM 配置
 
 ```bash
-sudo cp -r audio/ucm/ucm2/* /usr/share/alsa/ucm2/
-sudo alsactl init
-systemctl --user restart wireplumber
+sudo ./audio/install-audio.sh --install
+# 驗證 AVS 模組/韌體、UCM fallback、mixer 解 mute、WirePlumber 優先級。
+./audio/diagnose-audio.sh
 ```
 
 ### (3) 部署鍵盤頂排映射

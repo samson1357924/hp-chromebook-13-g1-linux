@@ -125,9 +125,24 @@ check_audio_status() {
     done
 
     if command -v wpctl > /dev/null 2>&1; then
+        # Same root-session pitfall as install verification: prefer real user's session.
+        # Avoids password prompts: same-UID queries run directly, others use non-interactive sudo.
+        local _wp_check _cu _cu_uid _me
+        _wp_check=""
+        _cu="$(get_real_user 2> /dev/null || true)"
+        _cu_uid="$(get_real_user_uid 2> /dev/null || true)"
+        _me="$(id -un 2> /dev/null || true)"
+        if [ -n "$_cu" ] && [ "$_cu" != "root" ] && [ -d "/run/user/$_cu_uid" ]; then
+            if [ "$_cu" = "$_me" ]; then
+                _wp_check=$(XDG_RUNTIME_DIR="/run/user/$_cu_uid" wpctl status 2> /dev/null || true)
+            else
+                _wp_check=$(sudo -n -u "$_cu" XDG_RUNTIME_DIR="/run/user/$_cu_uid" wpctl status 2> /dev/null || true)
+            fi
+        fi
+        [ -z "$_wp_check" ] && _wp_check=$(wpctl status 2> /dev/null || true)
         log_info "PipeWire Sinks/Sources:"
-        wpctl status 2> /dev/null | sed -n '/Audio/,/Video/p' | head -n 40 | while read -r line; do log_info "  $line"; done || true
-        if wpctl status 2> /dev/null | grep -qi "ssm4567"; then
+        echo "$_wp_check" | sed -n '/Audio/,/Video/p' | head -n 40 | while read -r line; do log_info "  $line"; done || true
+        if echo "$_wp_check" | grep -qi "ssm4567"; then
             log_success "  PipeWire Speaker sink (SSM4567) active"
         else
             log_warn "  Speaker sink (SSM4567) not found - check UCM/WirePlumber"
@@ -341,27 +356,56 @@ install_audio() {
     fi
 
     log_step 4 5 "Restarting PipeWire & WirePlumber..."
-    local real_user real_uid
+    local real_user real_uid ssm_sink wp_status
     real_user="$(get_real_user)"
     real_uid="$(get_real_user_uid)"
     if [ "${DRY_RUN:-0}" = "1" ]; then
         log_dryrun "Restart PipeWire & WirePlumber for user $real_user (UID: $real_uid)"
     else
-        if [ -n "$real_user" ] && [ -d "/run/user/$real_uid" ]; then
+        if [ -n "$real_user" ] && [ "$real_user" != "root" ] && [ -d "/run/user/$real_uid" ]; then
             sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" systemctl --user restart pipewire wireplumber 2> /dev/null || true
-            # Poll for graph rebuild (WirePlumber needs 2-5s)
-            for _ in 1 2 3 4 5 6 7 8; do
+            # WirePlumber needs 2-5s to rebuild the graph; wait before first poll
+            log_info "Waiting for PipeWire graph rebuild..."
+            sleep 2
+            # Poll for graph rebuild (up to 15s)
+            for _ in $(seq 1 15); do
                 if sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" wpctl status 2> /dev/null | grep -qi "ssm4567"; then
                     break
                 fi
                 sleep 1
             done
+            # Best-effort: lock default sink to SSM4567 HiFi to clear stale stereo-fallback.
+            # Takes the first sink in the Sinks: section (never a Device: entry).
+            ssm_sink=$(sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" wpctl status 2> /dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -i "ssm4567" | head -n1 | sed -E 's/^[^0-9]*([0-9]+)\..*/\1/')
+            case "$ssm_sink" in '' | *[!0-9]*) ssm_sink="" ;; esac
+            if [ -n "$ssm_sink" ]; then
+                if sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" wpctl set-default "$ssm_sink" 2> /dev/null; then
+                    log_info "Pinned default sink to SSM4567 ($ssm_sink)."
+                else
+                    log_info "SSM4567 sink $ssm_sink found, but set-default failed; leaving default unchanged."
+                fi
+            else
+                log_info "SSM4567 sink not found, leaving default unchanged."
+            fi
             log_success "PipeWire & WirePlumber restarted for '$real_user'."
         elif systemctl --user restart wireplumber 2> /dev/null; then
-            for _ in 1 2 3 4 5 6 7 8; do
+            log_info "Waiting for PipeWire graph rebuild..."
+            sleep 2
+            for _ in $(seq 1 15); do
                 if wpctl status 2> /dev/null | grep -qi "ssm4567"; then break; fi
                 sleep 1
             done
+            ssm_sink=$(wpctl status 2> /dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -i "ssm4567" | head -n1 | sed -E 's/^[^0-9]*([0-9]+)\..*/\1/')
+            case "$ssm_sink" in '' | *[!0-9]*) ssm_sink="" ;; esac
+            if [ -n "$ssm_sink" ]; then
+                if wpctl set-default "$ssm_sink" 2> /dev/null; then
+                    log_info "Pinned default sink to SSM4567 ($ssm_sink)."
+                else
+                    log_info "SSM4567 sink $ssm_sink found, but set-default failed; leaving default unchanged."
+                fi
+            else
+                log_info "SSM4567 sink not found, leaving default unchanged."
+            fi
             log_success "WirePlumber restarted."
         else
             log_info "No active user session; changes will take effect after next login/reboot."
@@ -373,14 +417,21 @@ install_audio() {
         if LC_ALL=C aplay -l 2> /dev/null | grep -q "SSM4567"; then
             log_success "ALSA card 'SSM4567' present."
         fi
-        if command -v wpctl > /dev/null 2>&1 && wpctl status 2> /dev/null | grep -qi "ssm4567"; then
+        # NOTE: when run via sudo, bare `wpctl status` sees root's (empty)
+        # session; query the real user's session instead to avoid false negatives.
+        wp_status=""
+        if [ -n "${real_user:-}" ] && [ "${real_user:-}" != "root" ] && [ -d "/run/user/${real_uid:-}" ]; then
+            wp_status=$(sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" wpctl status 2> /dev/null || true)
+        fi
+        [ -z "$wp_status" ] && wp_status=$(wpctl status 2> /dev/null || true)
+        if echo "$wp_status" | grep -qi "ssm4567"; then
             log_success "PipeWire Speaker sink (SSM4567) verified!"
         else
             log_warn "Speaker sink not yet visible - check 'wpctl status' after re-login"
         fi
-        # Show default sink
+        # Show default sink (reuse user-session output captured above)
         local default_sink
-        default_sink=$(wpctl status 2> /dev/null | grep -E '\*.*alsa_output' | head -n1 | sed 's/^[[:space:]]*//')
+        default_sink=$(echo "$wp_status" | grep -E '\*.*alsa_output' | head -n1 | sed 's/^[[:space:]]*//')
         if [ -n "$default_sink" ]; then
             log_info "Default sink: $default_sink"
         fi

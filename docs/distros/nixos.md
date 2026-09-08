@@ -9,7 +9,7 @@ the following settings into your `/etc/nixos/configuration.nix` or Nix Flake.
 
 ## 1. Complete Hardware Enablement Example (`hp-chromebook-13-g1.nix` – Chell)
 
-> **Note:** Fingerprint (`fprintd` / `cros_fp`) and SOF sections below are retained for c640 compatibility; Chell (HP Chromebook 13 G1) has no fingerprint hardware – skip steps 3–4 if deploying on Chell.
+> **Note:** Fingerprint (`fprintd` / `cros_fp`) sections below are retained for c640 compatibility; Chell (HP Chromebook 13 G1) has no fingerprint hardware – skip steps 3–4 if deploying on Chell.
 
 ```nix
 { config, pkgs, ... }:
@@ -52,8 +52,8 @@ in
   hardware.pulseaudio.enable = false;
   security.rtkit.enable = true;
 
-  # 2. Enable Intel SOF firmware
-  hardware.firmware = [ pkgs.sof-firmware ];
+  # 2. Enable Intel AVS firmware (Chell uses snd_soc_avs, not SOF)
+  hardware.firmware = [ pkgs.linux-firmware ];
 
   # 3. Enable the fingerprint service with the crfpmoc driver
   services.fprintd = {

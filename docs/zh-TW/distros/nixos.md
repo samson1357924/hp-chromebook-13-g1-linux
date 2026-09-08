@@ -10,7 +10,7 @@ NixOS 採用不可變（Immutable）與純宣告式（Declarative）系統架構
 
 ## 1. 完整硬體啟用配置範例 (`hp-chromebook-13-g1.nix` – Chell)
 
-> **注意：** 以下指紋（`fprintd` / `cros_fp`）與 SOF 段落為 c640 相容保留；Chell（HP Chromebook 13 G1）無指紋硬體，部署於 Chell 時請跳過步驟 3–4。
+> **注意：** 以下指紋（`fprintd` / `cros_fp`）段落為 c640 相容保留；Chell（HP Chromebook 13 G1）無指紋硬體，部署於 Chell 時請跳過步驟 3–4。
 
 ```nix
 { config, pkgs, ... }:
@@ -53,8 +53,8 @@ in
   hardware.pulseaudio.enable = false;
   security.rtkit.enable = true;
 
-  # 2. 啟用 Intel SOF 韌體
-  hardware.firmware = [ pkgs.sof-firmware ];
+  # 2. 啟用 Intel AVS 韌體（Chell 使用 snd_soc_avs，不是 SOF）
+  hardware.firmware = [ pkgs.linux-firmware ];
 
   # 3. 啟用指紋識別服務（含 crfpmoc 驅動）
   services.fprintd = {

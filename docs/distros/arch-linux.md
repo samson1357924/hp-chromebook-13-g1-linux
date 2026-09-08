@@ -34,15 +34,20 @@ makepkg -si
 sudo pacman -S --needed base-devel meson ninja pkgconf glib2 \
                         libgusb pixman libgudev json-glib \
                         gobject-introspection fprintd \
-                        sof-firmware pipewire pipewire-pulse wireplumber alsa-ucm-conf
+                        linux-firmware pipewire pipewire-pulse wireplumber alsa-ucm-conf
 ```
+
+> [!NOTE]
+> Chell (HP Chromebook 13 G1) uses Intel AVS (`snd_soc_avs`), not SOF.
+> Audio firmware is `/lib/firmware/intel/avs/` from `linux-firmware`;
+> do not install `sof-firmware` for audio.
 
 ### (2) Deploy Audio UCM Configuration
 
 ```bash
-sudo cp -r audio/ucm/ucm2/* /usr/share/alsa/ucm2/
-sudo alsactl init
-systemctl --user restart wireplumber
+sudo ./audio/install-audio.sh --install
+# Verifies AVS modules/firmware, UCM fallbacks, mixer unmute, WirePlumber priority.
+./audio/diagnose-audio.sh
 ```
 
 ### (3) Deploy Keyboard Top-Row Mapping
