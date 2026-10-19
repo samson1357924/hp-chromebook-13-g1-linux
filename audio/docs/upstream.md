@@ -21,7 +21,7 @@ Add rows with tester + date as new versions are validated.
 ## 3. Kernel >= 6.16: AVS Card Rename + PCM Renumbering
 
 * [`1581d5c`](https://github.com/torvalds/linux/commit/1581d5c68208) - "ASoC: Intel: avs: boards: Add Kconfig option for obsolete card names" (module parameter `snd-soc-avs.obsolete_card_names`).
-* [`25293be`](https://github.com/torvalds/linux/commit/25293be4a778) - "ASoC: Intel: avs: Update machine board card names": new names (driver `avs_ssm4567`, long name `AVS I2S SSM4567`, `AVS I2S NAU8825`, `AVS DMIC`, `AVS HDMI`) and front-end PCM renumbering - the PCM device number now follows the topology-provided DAI-link `pcm_id` (enabled by `use_dai_pcm_id`; `drv->use_dai_pcm_id = !obsolete_card_names` in `sound/soc/intel/avs/pcm.c`), leaving a single device `0` on these cards.
+* [`25293be`](https://github.com/torvalds/linux/commit/25293be4a778) - "ASoC: Intel: avs: Update machine board card names": new names (driver `avs_ssm4567`, long name `AVS I2S SSM4567`, `AVS I2S NAU8825`, `AVS DMIC`, `AVS HDMI`) and front-end PCM renumbering - the PCM device number now follows the topology-provided DAI-link `pcm_id` (enabled by `use_dai_pcm_id`; `drv->use_dai_pcm_id = !obsolete_card_names` in `sound/soc/intel/avs/pcm.c`), leaving device `0` only on SSM4567/NAU8825/DMIC; the HDMI card keeps devices `0`-`2`.
 * Legacy SKL removal in 6.12: driver [`a882f4d`](https://github.com/torvalds/linux/commit/a882f4d750ee); old `skl_nau88l25_ssm4567` board [`4dbf2f9`](https://github.com/torvalds/linux/commit/4dbf2f9a725d). AVS is the only supported path on Chell.
 * Consequence for userspace: UCM written for the old DMI names and `,1`/`,2` PCM numbers no longer matches. Ubuntu 26.04 ships only the old-style UCM, so the ACP HiFi profile fails and PipeWire falls back to `Dummy Output`.
 * Upstream UCM: [alsa-ucm-conf PR #571 "Intel: avs: Add new UCMs after recent kernel work"](https://github.com/alsa-project/alsa-ucm-conf/pull/571) adds the new-style UCMs - **still open (not merged) as of 2026-10**.
@@ -37,12 +37,24 @@ options snd-soc-avs obsolete_card_names=1 # old card names + PCM numbering
 
 The repo's UCM patches must be reverted first - the restored old numbering expects the stock `,1`/`,2` indices:
 
-1. Restore the stock UCM files: `sudo apt install --reinstall alsa-ucm-conf`, or copy the originals back from the installer's backups (`/var/backups/cros-enablement/<timestamp>/usr/share/alsa/ucm2/...`; the installer saves every file before patching it).
+1. Restore the stock UCM files: `sudo apt install --reinstall alsa-ucm-conf`, or copy the originals back from the installer's backups (`/var/backups/cros-enablement/<timestamp>/usr/share/alsa/ucm2/...`; the installer saves every file before patching it). Note: backups exist only for files this installer patched - patches applied by hand or by older runs (e.g. the DMIC HiFi files on this project's reference machine) may have no backup and need the reinstall.
 2. If `--uninstall` was used, it also removed the WirePlumber configs; restore them manually instead of re-running the installer: copy `audio/wireplumber/50-avs-chell.conf` and `power/wireplumber/50-disable-suspend.conf` to `/etc/wireplumber/wireplumber.conf.d/` (running the installer again would re-apply the PCM index patches and break this route).
 3. Create `/etc/modprobe.d/99-avs-obsolete-names.conf` with the two `options` lines above.
 4. Reboot (module parameters are read at load time).
 5. Verify: `cat /proc/asound/cards` shows the old card name (`avs_ssm4567`, no `AVS I2S` prefix), `aplay -l` shows the stock numbering again (device `1` for SSM4567/NAU8825; DMIC capture at device `2`) and `wpctl status` exposes the speaker sink.
 6. To switch back to the repo's patched-UCM route: delete the drop-in, reboot, then re-apply the repo patches following the install steps in [../README.md](../README.md).
+
+Required `conf.d` entries (non-HP DMI): with `obsolete_card_names=1` the UCM lookup long name is the DMI-derived name (`Google-Chell-1.0` on this project's units), and the stock package ships no matching file - the Chell entries use the HP-derived name `Hewlett_Packard-Chell-1.0.conf`. The lookup entry points are therefore the installer's driver-name fallback symlinks, one per DMI-named card (SSM4567, NAU8825, DMIC); `--uninstall` removes the ones it created, so recreate any that are missing:
+
+```bash
+sudo ln -sf ../../Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0.conf /usr/share/alsa/ucm2/conf.d/avs_ssm4567/avs_ssm4567.conf
+sudo ln -sf ../../Intel/avs/avs_nau8825/Hewlett_Packard-Chell-1.0.conf /usr/share/alsa/ucm2/conf.d/avs_nau8825/avs_nau8825.conf
+sudo ln -sf ../../Intel/avs/avs_dmic/DMIC-2ch.conf /usr/share/alsa/ucm2/conf.d/avs_dmic/avs_dmic.conf
+```
+
+The HDMI card needs no extra entry on this route: with obsolete names its driver name is the codec device name (e.g. `hdaudioB0D2`) and the stock package already ships the matching `conf.d/hdaudioB0D2/hdaudioB0D2.conf`; the installer's `avs_hdaudio` fallback belongs to the default (new-name) route.
+
+HP-DMI units match the shipped `Hewlett_Packard-Chell-1.0.conf` directly and need no extra symlink.
 
 Trade-offs:
 

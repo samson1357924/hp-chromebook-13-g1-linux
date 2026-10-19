@@ -5,7 +5,7 @@
 ## 1. TL;DR
 
 * **Symptom**: No sound at all. Applications "play" their streams and exit 0, but nothing is audible; `wpctl status` lists only `Dummy Output`.
-* **Primary chain (verified 2026-10-19, kernel 7.0.0-38)**: the distro UCM references `hw:${CardId},1` (SSM4567/NAU8825 playback) and `hw:${CardId},2` (DMIC capture), but kernel >= 6.16 exposes every AVS card as PCM device `0`. PipeWire's ACP backend cannot build the HiFi profile, every card keeps profile `off`, no hardware sink/source exists and PipeWire falls back to the silent `Dummy Output` (auto_null).
+* **Primary chain (verified 2026-10-19, kernel 7.0.0-38)**: the distro UCM references `hw:${CardId},1` (SSM4567/NAU8825 playback) and `hw:${CardId},2` (DMIC capture), but kernel >= 6.16 exposes SSM4567/NAU8825/DMIC as PCM device `0` only; the HDMI card (`avs_hdaudio`) keeps devices `0`-`2` (HDMI1-HDMI3). PipeWire's ACP backend cannot build the HiFi profile, every card keeps profile `off`, no hardware sink/source exists and PipeWire falls back to the silent `Dummy Output` (auto_null).
 * **`alsaucm` parsing is not proof**: `alsaucm -c hw:SSM4567 dump text` exits 0 and prints `Verb.HiFi` even while the profile cannot be built - alsa-lib parses the file without opening the referenced PCM.
 * **Discriminating checks**: `wpctl status` shows only `Dummy Output`; `pw-dump` card profiles are all `off`; `aplay -D hw:SSM4567,1` fails ENOENT while `-D hw:SSM4567,0` streams fine.
 * **Secondary / historical defects**: HDMI vs speakers priority tie (mitigated by `50-avs-chell.conf`, speakers 1500 > HDMI 500; matters when a display is attached) and missing `conf.d` fallback symlinks (created by the installer).
@@ -23,7 +23,7 @@
 
 ## 3. The Failure Chain Actually Observed (kernel >= 6.16)
 
-1. **UCM references a PCM device that does not exist.** Legacy UCM files ship `PlaybackPCM "hw:${CardId},1"` (SSM4567, NAU8825) and `CapturePCM "hw:${CardId},2"` (DMIC), but kernel >= 6.16 renumbered all AVS front-end PCMs to device `0` - only `hw:${CardId},0` exists.
+1. **UCM references a PCM device that does not exist.** Legacy UCM files ship `PlaybackPCM "hw:${CardId},1"` (SSM4567, NAU8825) and `CapturePCM "hw:${CardId},2"` (DMIC), but kernel >= 6.16 renumbered the front-end PCMs: SSM4567/NAU8825/DMIC expose only `hw:${CardId},0` (the HDMI card keeps devices `0`-`2`).
 2. **Parsing still succeeds.** The `conf.d` fallback symlinks are present and `alsaucm -c hw:SSM4567 dump text` exits 0; alsa-lib expands the UCM text without opening the PCM, so this check cannot see the mismatch.
 3. **ACP cannot build the HiFi profile.** PipeWire's ALSA Card Profile backend tries to open the UCM-referenced PCM, fails, and leaves the card with only the `{off, pro-audio}` profile set, active profile `off`.
 4. **No hardware sink exists.** PipeWire creates its fallback sink `Dummy Output` (auto_null). Applications open the null sink, exit 0, and everything "plays" silently.
@@ -35,7 +35,7 @@
 | `wpctl status` Sinks: | only `Dummy Output` | `* Built-in Speakers (SSM4567)` |
 | `pw-dump` card profiles | only `off` / `pro-audio`, active `off` | `HiFi` offered (and active for SSM4567/DMIC) |
 | `aplay -D hw:SSM4567,1 <wav>` | `audio open error: No such file or directory` (ENOENT) | - |
-| `aplay -D hw:SSM4567,0 <wav>` | streams fine | streams fine |
+| `aplay -D hw:SSM4567,0 <wav>` | streams fine (no PipeWire sink holds the PCM) | device exists; a bare `aplay` returns `EBUSY` while the PipeWire sink holds the PCM - expected |
 | `arecord -D hw:DMIC,2 ...` | ENOENT | - |
 | `arecord -D hw:DMIC,0 ...` | captures fine | captures fine |
 | `alsaucm -c hw:SSM4567 dump text` | exit 0, `Verb.HiFi` printed - **not sufficient evidence** | exit 0 |
@@ -46,7 +46,7 @@
 
 * **Kernel >= 6.16 renamed the AVS cards and renumbered their PCM devices**:
   * [`1581d5c`](https://github.com/torvalds/linux/commit/1581d5c68208) - "ASoC: Intel: avs: boards: Add Kconfig option for obsolete card names" (module parameter `snd-soc-avs.obsolete_card_names`).
-  * [`25293be`](https://github.com/torvalds/linux/commit/25293be4a778) - "ASoC: Intel: avs: Update machine board card names": new names (driver `avs_ssm4567`, long name `AVS I2S SSM4567`, ...) and front-end PCM renumbering - the PCM device number now follows the topology-provided DAI-link `pcm_id` (enabled by `use_dai_pcm_id`; `drv->use_dai_pcm_id = !obsolete_card_names` in `sound/soc/intel/avs/pcm.c`), leaving a single device `0` on these cards.
+  * [`25293be`](https://github.com/torvalds/linux/commit/25293be4a778) - "ASoC: Intel: avs: Update machine board card names": new names (driver `avs_ssm4567`, long name `AVS I2S SSM4567`, ...) and front-end PCM renumbering - the PCM device number now follows the topology-provided DAI-link `pcm_id` (enabled by `use_dai_pcm_id`; `drv->use_dai_pcm_id = !obsolete_card_names` in `sound/soc/intel/avs/pcm.c`), leaving device `0` only on SSM4567/NAU8825/DMIC (the HDMI card keeps devices `0`-`2`).
 * The legacy SKL driver was removed in 6.12 ([`a882f4d`](https://github.com/torvalds/linux/commit/a882f4d750ee); the old `skl_nau88l25_ssm4567` board: [`4dbf2f9`](https://github.com/torvalds/linux/commit/4dbf2f9a725d)) - AVS is the only path on Chell.
 * Ubuntu 26.04 still ships the old DMI-named UCM; the new-style UCM is upstream PR [alsa-ucm-conf #571](https://github.com/alsa-project/alsa-ucm-conf/pull/571) (open as of 2026-10).
 * The community workaround `obsolete_card_names=1` (+ `dsp_driver=4`) and its trade-offs are documented in [upstream.md](upstream.md).
@@ -88,7 +88,7 @@ Verified after the fix (2026-10-19): `wpctl status` shows sink `* Built-in Speak
 
 ## 8. Pitfalls
 
-* **PCM index**: every AVS card is PCM device `0` on kernel >= 6.16; the old `,1` (SSM4567/NAU8825) and `,2` (DMIC) templates open nothing - `ENOENT` even when `alsaucm` parses fine.
+* **PCM index**: on kernel >= 6.16, SSM4567/NAU8825/DMIC expose PCM device `0` only (the HDMI card keeps `0`-`2`); the old `,1` (SSM4567/NAU8825) and `,2` (DMIC) templates open nothing - `ENOENT` even when `alsaucm` parses fine.
 * **`alsaucm` is not enough**: `alsaucm -c hw:SSM4567 dump text` must show `Verb.HiFi` **and** the referenced PCM must exist; check `aplay -l` / `arecord -l` for device `0`.
 * **plughw vs hw**: `hw:SSM4567,0` only accepts 2ch; `aplay -D hw:SSM4567,0 Front_Center.wav` (mono) fails `Channels count non available` - use `plughw:SSM4567,0` or `speaker-test -c2`.
 * **Card numbers are dynamic**: use ALSA IDs, never fixed numbers.

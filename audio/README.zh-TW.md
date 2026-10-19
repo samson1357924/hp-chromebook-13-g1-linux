@@ -15,7 +15,7 @@ Chell 使用 **Intel AVS** (`snd_soc_avs`) 而非 SOF。獨立多卡架構（卡
 
 > **卡號為動態** — 每次開機的卡號可能不同（例如 `0=HDMI 1=DMIC 2=SSM4567 4=NAU8825`）。請用 `hw:SSM4567`/`hw:NAU8825`/`hw:DMIC`/`hw:HDMI`，或用 `cat /proc/asound/cards` 查詢目前的卡號，勿寫死 `hw:4,0`。範例：`alsaucm -c hw:SSM4567 dump text` / `amixer -c SSM4567 cget 'DSP Volume'`。
 
-> **PCM 索引**：kernel >= 6.16 起，每張 AVS 卡僅暴露 PCM device `0`。UCM 舊模板的 `PlaybackPCM "hw:${CardId},1"`（SSM4567/NAU8825）與 `CapturePCM "hw:${CardId},2"`（DMIC）都是錯誤值，會讓 PipeWire 的 ACP 後端無法建立 HiFi profile——症狀是只剩 `Dummy Output`、程式「播放成功」卻完全無聲。安裝腳本會把兩種索引都改寫為 `hw:${CardId},0`。
+> **PCM 索引**：kernel >= 6.16 起，SSM4567/NAU8825/DMIC 僅暴露 PCM device `0`；HDMI 卡（`avs_hdaudio`）仍保有 device `0`-`2`（HDMI1-HDMI3）。UCM 舊模板的 `PlaybackPCM "hw:${CardId},1"`（SSM4567/NAU8825）與 `CapturePCM "hw:${CardId},2"`（DMIC）都是錯誤值，會讓 PipeWire 的 ACP 後端無法建立 HiFi profile——症狀是只剩 `Dummy Output`、程式「播放成功」卻完全無聲。安裝腳本會把兩種索引都改寫為 `hw:${CardId},0`。
 
 ## 架構圖
 
@@ -32,7 +32,7 @@ PipeWire / WirePlumber ─┤
 
 | 症狀 | 原因 | 解法 |
 |------|------|------|
-| `wpctl status` 只看得到 `Dummy Output`；程式「播放成功」卻無聲（exit 0） | UCM 仍指向 `hw:${CardId},1`/`,2`，但 kernel >= 6.16 只有 PCM device `0`；ACP 無法建立 HiFi profile，卡片維持 profile `off` | `sudo ./audio/install-audio.sh --install` 修正 PCM 索引，之後重啟 PipeWire／重新登入。`alsaucm ... dump text` 仍可能 exit 0，不代表 profile 可用 |
+| `wpctl status` 只看得到 `Dummy Output`；程式「播放成功」卻無聲（exit 0） | UCM 仍指向 `hw:${CardId},1`/`,2`，但 kernel >= 6.16 起這些卡片只剩 PCM device `0`；ACP 無法建立 HiFi profile，卡片維持 profile `off` | `sudo ./audio/install-audio.sh --install` 修正 PCM 索引，之後重啟 PipeWire／重新登入。`alsaucm ... dump text` 仍可能 exit 0，不代表 profile 可用 |
 | `alsaucm -c hw:SSM4567 dump text` 報 `-2` | `conf.d/avs_ssm4567/AVS I2S SSM4567.conf` 缺失 | 執行 `./audio/install-audio.sh` 建立 fallback symlinks |
 | Sink 存在但聲音極小 | WirePlumber 還原了過低的節點音量（實測 0.06 = 6%）並覆蓋 DSP 混音器值 | `wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.5`；用 `wpctl get-volume @DEFAULT_AUDIO_SINK@` 確認 |
 | `amixer -c SSM4567` DSP Volume = 0 | 數位音量靜音 | 重跑 install 腳本；勿用小數值（範圍 `0..2147483647`，`80` 仍是靜音） |
@@ -82,7 +82,7 @@ alsaucm -c hw:SSM4567 dump text | head -n 40      # 確認 Verb.HiFi 正常（�
 ## Pitfalls
 
 - **alsa-lib 搜尋路徑**：僅查 `conf.d/${Driver}/${CardLongName}.conf` 與 `conf.d/${Driver}/${Driver}.conf`；發行版只提供舊 DMI 檔名，故安裝腳本會建立 `AVS I2S SSM4567.conf`（新長名稱）與 `avs_ssm4567.conf`（driver 名）兩個 fallback。
-- **PCM 索引陷阱**：kernel >= 6.16 僅有 `hw:${CardId},0`，舊模板的 `,1`/`,2` 會讓 ACP HiFi profile 失敗；`alsaucm` 解析成功（exit 0、顯示 `Verb.HiFi`）**不代表** profile 可用。
+- **PCM 索引陷阱**：kernel >= 6.16 起 SSM4567/NAU8825/DMIC 僅有 `hw:${CardId},0`（HDMI 卡仍保有 `0`-`2`），舊模板的 `,1`/`,2` 會讓 ACP HiFi profile 失敗；`alsaucm` 解析成功（exit 0、顯示 `Verb.HiFi`）**不代表** profile 可用。
 - **`alsa-ucm-conf` 更新陷阱**：套件升級會覆寫已修補的 `Intel/avs/**-HiFi.conf`，`Dummy Output` 症狀重現；請重跑 `sudo ./audio/install-audio.sh --install`。
 - **stereo-fallback / Dummy Output 陷阱**：HiFi profile 建構失敗時，PipeWire 只提供靜音的 `Dummy Output`（auto_null）；舊的 stereo-fallback 模式則會讓所有 Sink 同為優先級 1000，易被 HDMI 搶佔。
 - **plughw vs hw**：AVS SSM4567 的 `hw:SSM4567,0` 僅接受 2ch S24_LE，`aplay -D hw:SSM4567,0 Front_Center.wav` (mono) 會報 `Channels count non available`，請用 `plughw:SSM4567,0` 或 `speaker-test -c2`。

@@ -41,7 +41,7 @@
 
 ### 1. 系統音效無聲 — 只剩 `Dummy Output`（kernel >= 6.16 的 UCM PCM 索引錯配）
 
-* **檢查**：`wpctl status` 的 Sinks 只剩 `Dummy Output`（沒有 `* Built-in Speakers (SSM4567)`）；`pw-dump` 顯示每張 AVS 卡只有 `{off, pro-audio}`、作用中 profile 為 `off`；`aplay -D hw:SSM4567,1 ...` 報 `No such file or directory`（ENOENT）——這就是故障特徵；健康系統上 device 存在（裸 `aplay -D hw:SSM4567,0` 在 PipeWire sink 佔用 PCM 時會回 `EBUSY`，屬正常）。kernel >= 6.16 起 SSM4567/NAU8825/DMIC 只暴露 PCM device `0`；HDMI 卡（`avs_hdaudio`）仍保有 device `0`-`2`（HDMI1-HDMI3）。
+* **檢查**：`wpctl status` 的 Sinks 只剩 `Dummy Output`（沒有 `* Built-in Speakers (SSM4567)`）；`pw-dump` 顯示每張 AVS 卡只有 `{off, pro-audio}`、作用中 profile 為 `off`；`aplay -D hw:SSM4567,1 ...` 以 ENOENT 失敗（訊息依語系本地化——英文為 `No such file or directory`）——這就是故障特徵；健康系統上 device 存在（裸 `aplay -D hw:SSM4567,0` 在 PipeWire sink 佔用 PCM 時會回 `EBUSY`，屬正常）。kernel >= 6.16 起 SSM4567/NAU8825/DMIC 只暴露 PCM device `0`；HDMI 卡（`avs_hdaudio`）仍保有 device `0`-`2`（HDMI1-HDMI3）。
 * **根本原因**：kernel >= 6.16 重新命名 AVS 卡（`AVS I2S SSM4567`、`AVS I2S NAU8825`、`AVS DMIC`、`AVS HDMI`）並重編 FE PCM 編號；發行版 UCM 仍引用 `hw:${CardId},1`（SSM4567/NAU8825）與 `,2`（DMIC），PipeWire 的 ACP 後端開不了 PCM、建不出 HiFi profile，所有卡停留在 profile `off`，沒有硬體 sink，PipeWire 只能退回靜音的 `Dummy Output`——應用程式「播放成功」卻無聲（exit 0）。完整鏈路見 [audio/docs/root-cause.md](https://github.com/samson1357924/hp-chromebook-13-g1-linux/blob/main/audio/docs/root-cause.md)。
   * `alsaucm -c hw:SSM4567 dump text` 可能 exit 0 並顯示 `Verb.HiFi`，但 profile 仍建構失敗——解析成功**不代表** PCM 開得起來。
   * 次要：HDMI 與喇叭的優先權平手，由 `50-avs-chell.conf` 修正（喇叭 1500 > HDMI 500；主要在有帶音訊的螢幕時才影響）。
