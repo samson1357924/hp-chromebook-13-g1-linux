@@ -4,73 +4,108 @@
 
 ## 1. TL;DR
 
-* **Symptom**: No sound from built-in speakers (SSM4567), and often default sink is HDMI (no sound).
-* **Root causes** (3-fold, all verified on Chell `board_name=Chell`, kernel 7.0.0-30, AVS):
-  1. **PipeWire default sink hijacked by HDMI** — `avs_hdaudio` (card 2) and `avs_ssm4567` (card 4) both at `priority 1000` (stereo-fallback). HDMI enumerated first wins, WirePlumber locks it with +30000.
-  2. **UCM fallback missing** — `alsa-lib` only searches `conf.d/${Driver}/${CardLongName}.conf` and `conf.d/${Driver}/${Driver}.conf`; distro ships only `Hewlett_Packard-Chell-1.0.conf` → `alsaucm -c hw:SSM4567 dump text` fails `-2`, PipeWire falls back to `stereo-fallback`.
-  3. **DSP Volume 0** — `amixer -cSSM4567 cget name='DSP Volume'` range `0..2147483647` is at `0` (mute) after fresh install.
-* **Not firmware**: `dmesg | grep -i avs` clean, `/lib/firmware/intel/avs/skl/dsp_basefw.bin.zst` present, `lsmod` shows `snd_soc_avs*`.
+* **Symptom**: No sound at all. Applications "play" their streams and exit 0, but nothing is audible; `wpctl status` lists only `Dummy Output`.
+* **Primary chain (verified 2026-10-19, kernel 7.0.0-38)**: the distro UCM references `hw:${CardId},1` (SSM4567/NAU8825 playback) and `hw:${CardId},2` (DMIC capture), but kernel >= 6.16 exposes every AVS card as PCM device `0`. PipeWire's ACP backend cannot build the HiFi profile, every card keeps profile `off`, no hardware sink/source exists and PipeWire falls back to the silent `Dummy Output` (auto_null).
+* **`alsaucm` parsing is not proof**: `alsaucm -c hw:SSM4567 dump text` exits 0 and prints `Verb.HiFi` even while the profile cannot be built - alsa-lib parses the file without opening the referenced PCM.
+* **Discriminating checks**: `wpctl status` shows only `Dummy Output`; `pw-dump` card profiles are all `off`; `aplay -D hw:SSM4567,1` fails ENOENT while `-D hw:SSM4567,0` streams fine.
+* **Secondary / historical defects**: HDMI vs speakers priority tie (mitigated by `50-avs-chell.conf`, speakers 1500 > HDMI 500; matters when a display is attached) and missing `conf.d` fallback symlinks (created by the installer).
+* **Volume**: after the sink appears, WirePlumber restores its saved node volume (observed 0.06 = 6%) and overrides the installer's `DSP Volume`; the persistent knob is `wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.5`.
+* **Not firmware**: `/sys/.../avs/fw_version = 9.21.0.4899` with no load errors; Chell uses AVS, never SOF.
+* **Fix**: `sudo ./audio/install-audio.sh --install` (conf.d symlinks + `,1`/`,2` -> `,0` PCM indices + mixers + WirePlumber). **Re-run it after every `alsa-ucm-conf` update** - package upgrades overwrite the patched HiFi files and reintroduce the failure.
 
 ## 2. Affected Environment
 
-* Sound: `avs_ssm4567` (Speakers hw:SSM4567,0), `avs_nau8825` (Headphones hw:NAU8825,0 + Headset Mic), `avs_dmic` (DMIC hw:DMIC,0), `avs_hdaudio` (HDMI hw:2,0-2) — **Intel AVS**, not SOF.
-* OS: Ubuntu 26.04 LTS, pipewire 1.6.2, wireplumber 0.5.13, kernel 7.0.
-* UCM: `/usr/share/alsa/ucm2/Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0.conf` present but `conf.d` fallbacks missing pre-fix.
+* Sound: `avs_ssm4567` (speakers, SSP0), `avs_nau8825` (headset, SSP1), `avs_dmic`, `avs_hdaudio`, `avs_probe` - **Intel AVS** (`snd_soc_avs`), not SOF.
+* OS: Ubuntu 26.04.1 LTS, kernel 7.0.0-38-generic, PipeWire 1.6.2, WirePlumber 0.5.13, alsa-ucm-conf 1.2.15.3-1ubuntu1.7 (verified 2026-10-19).
+* UCM: Ubuntu ships only the old DMI-named lookup (`conf.d/avs_ssm4567/Hewlett_Packard-Chell-1.0.conf`); the new-style UCM for kernel >= 6.16 is still an open upstream PR (see [upstream.md](upstream.md)).
+* Cards and their numbers are non-deterministic - always use ALSA IDs (`hw:SSM4567`, `hw:NAU8825`, `hw:DMIC`, `hw:HDMI`) and device index `0`.
+* Status after the fix: sink `Built-in Speakers (SSM4567)` and source `Internal Digital Mic (DMIC)`; speakers user-confirmed audible, microphone verified with `pw-record` capturing speech.
 
-## 3. Symptoms
+## 3. The Failure Chain Actually Observed (kernel >= 6.16)
 
-* `wpctl status` shows Sinks: `* HDMI` (card 2) rather than `* Speakers (SSM4567)` (card 4); audio goes to HDMI (no speaker sound).
-* `pw-dump` shows `priority.session=1000` for both HDMI and Speakers (tie).
-* `alsaucm -c hw:SSM4567 dump text` → `[error.ucm] failed to import hw:SSM4567 -2` pre-fix.
-* `amixer -cSSM4567 cget name='DSP Volume'` → `values=0` pre-fix.
-* `dmesg` clean — rules out firmware/topology missing.
+1. **UCM references a PCM device that does not exist.** Legacy UCM files ship `PlaybackPCM "hw:${CardId},1"` (SSM4567, NAU8825) and `CapturePCM "hw:${CardId},2"` (DMIC), but kernel >= 6.16 renumbered all AVS front-end PCMs to device `0` - only `hw:${CardId},0` exists.
+2. **Parsing still succeeds.** The `conf.d` fallback symlinks are present and `alsaucm -c hw:SSM4567 dump text` exits 0; alsa-lib expands the UCM text without opening the PCM, so this check cannot see the mismatch.
+3. **ACP cannot build the HiFi profile.** PipeWire's ALSA Card Profile backend tries to open the UCM-referenced PCM, fails, and leaves the card with only the `{off, pro-audio}` profile set, active profile `off`.
+4. **No hardware sink exists.** PipeWire creates its fallback sink `Dummy Output` (auto_null). Applications open the null sink, exit 0, and everything "plays" silently.
 
-## 4. Wrong Explanations (excluded)
+### Discriminating Checks
 
-| Old theory | Refutation |
-|---|---|
-| SOF firmware missing (`sof-cml.ri`/`firmware-sof-signed`) | Chell uses AVS, not SOF; `lsmod \| grep snd_soc_avs` shows AVS loaded, `snd_sof` only as hda-intel shim |
-| Reinstall `alsa-ucm-conf` fixes it | Distro package correctly ships AVS UCM but lacks `conf.d` fallback symlinks — need `install-audio.sh` patch |
-| Dummy Output (single card `sofrt5682`) | Chell is multi-card AVS; Dummy Output is for SOF single-card, not applicable |
-
-## 5. The Real Chain
-
-1. **UCM search fails**:
-
-   ```bash
-   strace -e trace=file alsaucm -c hw:SSM4567 dump text 2>&1 | grep -E "conf.d/avs_ssm4567"
-   # access(.../conf.d/avs_ssm4567/AVS I2S SSM4567.conf) = -1 ENOENT
-   # access(.../conf.d/avs_ssm4567/avs_ssm4567.conf) = -1 ENOENT
-   ```
-
-2. PipeWire falls back to `stereo-fallback` (no HiFi), both HDMI and Speakers at `1000`.
-3. WirePlumber picks HDMI as default sink (enumeration order + `default.configured.audio.sink` bonus +30000).
-4. Even after UCM fixed, `DSP Volume 0` still mutes speakers — needs `amixer -cSSM4567 cset name='DSP Volume' 1500000000` (range is 0..2147483647, `120` would still be mute).
-
-## 6. Pitfalls
-
-* **PCM index**: AVS multi-card uses `hw:${CardId},0` per card; old template `hw:${CardId},1` would `ENOENT` even if UCM loaded.
-* **Alsaucm vs UCM**: `alsaucm -c hw:SSM4567 dump text` must show `Verb.HiFi`; `alsaucm -c hw:SSM4567 dump text | grep PlaybackPCM` should show `hw:${CardId},0`.
-* **plughw vs hw**: `hw:SSM4567,0` only accepts 2ch; `aplay -D hw:SSM4567,0 Front_Center.wav` (mono) fails `Channels count non available` — use `plughw:SSM4567,0` or `speaker-test -c2`.
-* **Per-user WirePlumber shadowing**: `~/.config/wireplumber/wireplumber.conf.d/50-avs-rules.conf` shadows `/etc`; install script removes legacy.
-
-## 7. Fallback Routing Limits (no UCM / no priority fix)
-
-| Card | PCM | Role |
+| Check | Failing state (observed) | Working state |
 |---|---|---|
-| 0 | hw:DMIC,0 | DMIC capture 2ch |
-| 2 | hw:2,0/1/2 | HDMI playback |
-| 3 | hw:NAU8825,0 | Headphone playback + Headset capture (JackControl) |
-| 4 | hw:SSM4567,0 | Speaker playback |
+| `wpctl status` Sinks: | only `Dummy Output` | `* Built-in Speakers (SSM4567)` |
+| `pw-dump` card profiles | only `off` / `pro-audio`, active `off` | `HiFi` offered (and active for SSM4567/DMIC) |
+| `aplay -D hw:SSM4567,1 <wav>` | `audio open error: No such file or directory` (ENOENT) | - |
+| `aplay -D hw:SSM4567,0 <wav>` | streams fine | streams fine |
+| `arecord -D hw:DMIC,2 ...` | ENOENT | - |
+| `arecord -D hw:DMIC,0 ...` | captures fine | captures fine |
+| `alsaucm -c hw:SSM4567 dump text` | exit 0, `Verb.HiFi` printed - **not sufficient evidence** | exit 0 |
 
-Without priority fix, HDMI always wins. Without UCM, no `JackControl` binding for headphone auto-switch.
+> **Historical note**: on older setups the same silent failure could be caused by missing `conf.d` fallback symlinks; in that case `alsaucm -c hw:SSM4567 dump text` fails with `-2` and detects the problem. The installer still creates those symlinks; both defects must be fixed for the HiFi profile to build.
 
-## 8. Fix
+## 4. Upstream Cause
+
+* **Kernel >= 6.16 renamed the AVS cards and renumbered their PCM devices**:
+  * [`1581d5c`](https://github.com/torvalds/linux/commit/1581d5c68208) - "ASoC: Intel: avs: boards: Add Kconfig option for obsolete card names" (module parameter `snd-soc-avs.obsolete_card_names`).
+  * [`25293be`](https://github.com/torvalds/linux/commit/25293be4a778) - "ASoC: Intel: avs: Update machine board card names": new names (driver `avs_ssm4567`, long name `AVS I2S SSM4567`, ...) and front-end PCM renumbering - the PCM device number now follows the topology-provided DAI-link `pcm_id` (enabled by `use_dai_pcm_id`; `drv->use_dai_pcm_id = !obsolete_card_names` in `sound/soc/intel/avs/pcm.c`), leaving a single device `0` on these cards.
+* The legacy SKL driver was removed in 6.12 ([`a882f4d`](https://github.com/torvalds/linux/commit/a882f4d750ee); the old `skl_nau88l25_ssm4567` board: [`4dbf2f9`](https://github.com/torvalds/linux/commit/4dbf2f9a725d)) - AVS is the only path on Chell.
+* Ubuntu 26.04 still ships the old DMI-named UCM; the new-style UCM is upstream PR [alsa-ucm-conf #571](https://github.com/alsa-project/alsa-ucm-conf/pull/571) (open as of 2026-10).
+* The community workaround `obsolete_card_names=1` (+ `dsp_driver=4`) and its trade-offs are documented in [upstream.md](upstream.md).
+
+## 5. Wrong Explanations (excluded)
+
+| Theory | Refutation |
+|---|---|
+| SOF firmware missing (`sof-cml.ri` / `firmware-sof-signed`) | Chell uses AVS, not SOF; `lsmod` shows `snd_soc_avs*` (SOF only as an HDA shim); `fw_version = 9.21.0.4899` loads with no errors |
+| Reinstalling `alsa-ucm-conf` fixes it | The opposite: the package restores the stock `,1`/`,2` indices and overwrites the patched HiFi files - re-run the installer after any package update |
+| "`Dummy Output` is a SOF single-card issue, not applicable to Chell" | The old `sofrt5682` single-card scenario still does not apply, but on Chell `Dummy Output` (auto_null) is the **symptom** of the failed AVS HiFi profile - see section 3 |
+| DMIC NHLT warning `Endpoint format configuration not found` (x6 per DMIC open) | Warning only - capture works after the PCM index fix (verified with `pw-record` capturing speech) |
+| HDMI/speakers priority tie | Secondary: handled by `50-avs-chell.conf` (speakers 1500 > HDMI 500); only matters when a display with audio is attached |
+
+## 6. Volume (DSP Volume Re-framed)
+
+* The installer sets the `DSP Volume` mixer, but on login **WirePlumber restores its saved node volume** and writes it to the control, overriding the installer (observed: node volume 0.06 = 6%, `DSP Volume` ended at 128843776, about -24 dB).
+* The persistent, user-facing knob is the WirePlumber node volume:
 
 ```bash
-sudo ./audio/install-audio.sh --install   # creates conf.d fallbacks, fixes PCM, unmutes DSP, deploys 50-avs-chell.conf + 50-disable-suspend.conf
-./audio/diagnose-audio.sh                  # verifies 6 dimensions
-speaker-test -D plughw:SSM4567,0 -c2 -l1         # should produce pink noise on both speakers
+wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.5   # persistent correction
+wpctl get-volume @DEFAULT_AUDIO_SINK@       # check; values below 0.2 are suspicious
 ```
 
-See [upstream.md](upstream.md) for AVS upstream tracking.
+`audio/diagnose-audio.sh` warns when the default sink volume is below 0.2.
+
+## 7. Fix and Package-Update Caveat
+
+```bash
+sudo ./audio/install-audio.sh --install    # conf.d symlinks, ,1/,2 -> ,0 PCM indices, mixers, WirePlumber
+./audio/diagnose-audio.sh                  # 6-dimension verification
+wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.5  # if the restored node volume is too low
+speaker-test -D plughw:SSM4567,0 -c2 -l1   # pink noise on both speakers
+```
+
+Verified after the fix (2026-10-19): `wpctl status` shows sink `* Built-in Speakers (SSM4567)` and source `* Internal Digital Mic (DMIC)`; speakers audible (user-confirmed); microphone captured speech via `pw-record`.
+
+> **Package updates reintroduce the failure.** Upgrading `alsa-ucm-conf` overwrites `Intel/avs/**-HiFi.conf`, restoring the stale `,1`/`,2` PCM indices. Re-run `sudo ./audio/install-audio.sh --install` after such updates. This is very likely how this machine regressed before this session.
+
+## 8. Pitfalls
+
+* **PCM index**: every AVS card is PCM device `0` on kernel >= 6.16; the old `,1` (SSM4567/NAU8825) and `,2` (DMIC) templates open nothing - `ENOENT` even when `alsaucm` parses fine.
+* **`alsaucm` is not enough**: `alsaucm -c hw:SSM4567 dump text` must show `Verb.HiFi` **and** the referenced PCM must exist; check `aplay -l` / `arecord -l` for device `0`.
+* **plughw vs hw**: `hw:SSM4567,0` only accepts 2ch; `aplay -D hw:SSM4567,0 Front_Center.wav` (mono) fails `Channels count non available` - use `plughw:SSM4567,0` or `speaker-test -c2`.
+* **Card numbers are dynamic**: use ALSA IDs, never fixed numbers.
+* **Per-user WirePlumber shadowing**: `~/.config/wireplumber/wireplumber.conf.d/50-avs-rules.conf` shadows `/etc`; the install script removes legacy copies.
+* **DMIC NHLT warning**: `Endpoint format configuration not found` (repeated per DMIC open) is harmless; capture works.
+
+## 9. Fallback Routing Limits (no UCM / no priority fix)
+
+Example enumeration (card numbers change between boots):
+
+| Example card | PCM | Role |
+|---|---|---|
+| 0 | hw:NAU8825,0 | Headphone playback + headset capture (JackControl) |
+| 2 | hw:HDMI,0/1/2 | HDMI playback |
+| 3 | hw:DMIC,0 | DMIC capture 2ch |
+| 4 | hw:SSM4567,0 | Speaker playback |
+
+Without the UCM PCM fix there is no HiFi profile at all (silent `Dummy Output`); without the priority rules HDMI can take over the default sink when a display is attached; without UCM there is no `JackControl` binding for headphone auto-switch (auto-switch not fully evidenced).
+
+See [upstream.md](upstream.md) for AVS upstream tracking and the `obsolete_card_names` alternative.
