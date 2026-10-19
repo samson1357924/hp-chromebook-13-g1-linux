@@ -5,13 +5,13 @@ on:
     branches: [ main, master ]
     paths:
       - 'audio/**'
-      - 'tests/audio-ucm-pcm-index-test.sh'
+      - 'tests/**'
       - '.github/workflows/audio-ci.yml'
   pull_request:
     branches: [ main, master ]
     paths:
       - 'audio/**'
-      - 'tests/audio-ucm-pcm-index-test.sh'
+      - 'tests/**'
       - '.github/workflows/audio-ci.yml'
   workflow_dispatch:
 

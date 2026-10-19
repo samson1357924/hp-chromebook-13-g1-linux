@@ -61,6 +61,7 @@ jobs:
               # Strip fenced code blocks and inline code spans before link
               # extraction, so code examples like [...](...) cannot be
               # mistaken for real links.
+              # shellcheck disable=SC2016  # literal backticks in the sed ERE
               sed -E '/^[[:space:]]*(```|~~~)/,//d; s/`[^`]*`//g' "$f" \
                 | grep -oE '\[[^]]*\]\([^)]*\)' \
                 | sed -E 's/^\[[^]]*\]\(([^)]*)\)/\1/'
