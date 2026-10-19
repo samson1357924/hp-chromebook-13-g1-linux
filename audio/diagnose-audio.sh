@@ -191,8 +191,8 @@ case "$wp_sink" in
 esac
 if command -v pw-dump > /dev/null 2>&1; then
     echo "  ALSA nodes (pw-dump):"
-    pw-dump 2> /dev/null | grep -o '"node.name" : "alsa[^"]*"' | sort -u | sed 's/^/    /' || true
-    echo "  Default sink: $(printf '%s\n' "$wp_status_out" | grep -E '\*.*alsa_output' | head -n1 | sed 's/^/    /')"
+    pw-dump 2> /dev/null | grep -oE '"node.name"[[:space:]]*:[[:space:]]*"alsa[^"]*"' | sort -u | sed 's/^/    /' || true
+    echo "  Default sink: $(printf '%s\n' "$wp_status_out" | sed -n '/Sinks:/,/Sources:/p' | grep -E '\*' | head -n1 | sed -E 's/^[^0-9]*//')"
 fi
 # WirePlumber restores a saved node volume on login, which can override the
 # installer's 'DSP Volume' mixer value and leave playback nearly silent.

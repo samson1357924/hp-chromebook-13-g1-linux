@@ -151,7 +151,7 @@ check_audio_status() {
         [ -z "$_wp_check" ] && _wp_check=$(wpctl status 2> /dev/null || true)
         log_info "PipeWire Sinks/Sources:"
         echo "$_wp_check" | sed -n '/Audio/,/Video/p' | head -n 40 | while read -r line; do log_info "  $line"; done || true
-        if echo "$_wp_check" | grep -qi "ssm4567"; then
+        if echo "$_wp_check" | sed -n '/Sinks:/,/Sources:/p' | grep -qi "ssm4567"; then
             log_success "  PipeWire Speaker sink (SSM4567) active"
         else
             log_warn "  Speaker sink (SSM4567) not found - check UCM/WirePlumber"
@@ -183,14 +183,18 @@ uninstall_audio() {
     else
         log_dryrun "Would prune empty $UCM_DST/conf.d/avs_* if empty"
     fi
-    log_success "Audio configs rolled back. Restarting PipeWire/WirePlumber..."
-    local real_user real_uid
-    real_user="$(get_real_user)"
-    real_uid="$(get_real_user_uid)"
-    if [ -n "$real_user" ] && [ -d "/run/user/$real_uid" ]; then
-        sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" systemctl --user restart pipewire wireplumber 2> /dev/null || true
+    if [ "${DRY_RUN:-0}" = "1" ]; then
+        log_dryrun "Would restart PipeWire/WirePlumber for the real user session"
+    else
+        log_success "Audio configs rolled back. Restarting PipeWire/WirePlumber..."
+        local real_user real_uid
+        real_user="$(get_real_user)"
+        real_uid="$(get_real_user_uid)"
+        if [ -n "$real_user" ] && [ -d "/run/user/$real_uid" ]; then
+            sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" systemctl --user restart pipewire wireplumber 2> /dev/null || true
+        fi
+        log_success "Rollback complete."
     fi
-    log_success "Rollback complete."
 }
 
 fix_ucm_fallbacks() {
@@ -436,14 +440,14 @@ install_audio() {
             wp_status=$(sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" wpctl status 2> /dev/null || true)
         fi
         [ -z "$wp_status" ] && wp_status=$(wpctl status 2> /dev/null || true)
-        if echo "$wp_status" | grep -qi "ssm4567"; then
+        if echo "$wp_status" | sed -n '/Sinks:/,/Sources:/p' | grep -qi "ssm4567"; then
             log_success "PipeWire Speaker sink (SSM4567) verified!"
         else
             log_warn "Speaker sink not yet visible - check 'wpctl status' after re-login"
         fi
-        # Show default sink (reuse user-session output captured above)
+        # Show default sink (first '*' line of the Sinks section; friendly names, not alsa_output)
         local default_sink
-        default_sink=$(echo "$wp_status" | grep -E '\*.*alsa_output' | head -n1 | sed 's/^[[:space:]]*//')
+        default_sink=$(echo "$wp_status" | sed -n '/Sinks:/,/Sources:/p' | grep -E '\*' | head -n1 | sed -E 's/^[^0-9]*//')
         if [ -n "$default_sink" ]; then
             log_info "Default sink: $default_sink"
         fi
