@@ -44,21 +44,27 @@ body:
     id: audio_soundcards
     attributes:
       label: Sound Cards (`aplay -l` — use ALSA IDs, card numbers are dynamic)
-      description: Expected cards are `SSM4567` (speaker), `NAU8825` (headphone), `DMIC`, `HDMI` via `snd_soc_avs`.
+      description: |
+        Expected cards are `SSM4567` (speaker), `NAU8825` (headphone), `DMIC`, `HDMI` via `snd_soc_avs`
+        (kernel >= 6.16 long names: `AVS I2S SSM4567`, `AVS I2S NAU8825`, `AVS DMIC`, `AVS HDMI`).
+        SSM4567/NAU8825/DMIC expose PCM device `0` only; the HDMI card (`avs_hdaudio`) keeps devices 0-2
+        (HDMI1-HDMI3) — report any other mismatch.
       placeholder: |
         **** List of PLAYBACK Hardware Devices ****
-        card 0: HDMI [HDA Intel HDMI]
-        card 1: SSM4567 [SSM4567]
-        card 2: NAU8825 [NAU8825]
-        card 3: DMIC [DMIC]
+        card 0: NAU8825 [AVS I2S NAU8825], device 0
+        card 2: HDMI [AVS HDMI], device 0-2
+        card 4: SSM4567 [AVS I2S SSM4567], device 0
       render: shell
   - type: textarea
     id: audio_ucm_files
     attributes:
       label: UCM Files Check (`ls -l /usr/share/alsa/ucm2/conf.d/avs_*/` and `/usr/share/alsa/ucm2/Intel/avs/`)
       description: |
-        Missing files here = root cause of Dummy Output (see audio/docs/root-cause.md).
-        Expected: conf.d/avs_ssm4567/, conf.d/avs_nau8825/, conf.d/avs_dmic/, conf.d/avs_hdaudio/ + Intel/avs fallbacks.
+        Missing `conf.d` fallback symlinks make `alsaucm` fail (`-2`) — one historical root cause of Dummy Output.
+        On kernel >= 6.16 the main cause is a stale PCM index: the UCM `PlaybackPCM`/`CapturePCM` still references
+        `hw:${CardId},1` (SSM4567/NAU8825) or `,2` (DMIC) while the kernel exposes device `0` only; the ACP HiFi
+        profile then fails to build and PipeWire shows only `Dummy Output`. See `audio/docs/root-cause.md`.
+        Expected: conf.d/avs_ssm4567/, conf.d/avs_nau8825/, conf.d/avs_dmic/, conf.d/avs_hdaudio/ + Intel/avs SSM4567/NAU8825/DMIC files with device `0` (HDMI UCM keeps devices 0-2).
       placeholder: |
         /usr/share/alsa/ucm2/conf.d/avs_ssm4567/AVS I2S SSM4567.conf
         /usr/share/alsa/ucm2/Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-*.conf
@@ -66,12 +72,15 @@ body:
   - type: textarea
     id: audio_wpctl
     attributes:
-      label: PipeWire Status (`wpctl status` — look for SSM4567/NAU8825 sinks)
-      description: Dummy Output appears when no real sink exists.
+      label: PipeWire Status (`wpctl status` — Sinks/Sources, plus `pw-dump` card profiles)
+      description: |
+        Only `Dummy Output` (auto_null) means no real sink exists; `pw-dump` then shows the AVS cards with
+        profiles `{off, pro-audio}` and active profile `off`. A stale UCM PCM index is the usual cause.
       placeholder: |
         Sinks:
-           48. SSM4567 [vol: 1.00]
-           49. NAU8825 [vol: 1.00]
+        *   62. Built-in Speakers (SSM4567)  [vol: 0.50]
+        Sources:
+        *   61. Internal Digital Mic (DMIC) [vol: 0.55]
       render: shell
   - type: textarea
     id: audio_dmesg_sof
@@ -83,16 +92,16 @@ body:
   - type: checkboxes
     id: audio_matrix
     attributes:
-      label: Audio Test Matrix (UCM present × headphone plugged)
+      label: Audio Test Matrix (UCM state × headphone plugged)
       description: Check each scenario you have tested.
       options:
-        - label: UCM missing + headphones unplugged → Dummy Output / profile=off
-        - label: UCM missing + headphones plugged → only headphone path audible
-        - label: UCM present + headphones unplugged → Speaker (SSM4567) profile available
-        - label: UCM present + headphones plugged → auto-switch to Headphone (NAU8825)
+        - label: Stale UCM PCM index (`,1`/`,2`) + kernel >= 6.16 → Dummy Output / card profiles `off`
+        - label: Patched UCM (audio/install-audio.sh), headphones unplugged → Speaker (SSM4567) HiFi sink present
+        - label: Patched UCM (audio/install-audio.sh), headphones plugged → Headphone (NAU8825) expected (auto-switch not fully verified)
+        - label: Sink present but volume very low (`wpctl get-volume @DEFAULT_AUDIO_SINK@` < 0.2)
   - type: textarea
     id: logs
     attributes:
       label: Relevant System Logs / Diagnostic Output
-      description: Paste output of `./scripts/detect-hardware.sh`, `./audio/diagnose-audio.sh` or `journalctl --user -u wireplumber -e`
+      description: Paste output of `./audio/diagnose-audio.sh` (preferred), `./scripts/detect-hardware.sh` or `journalctl --user -u wireplumber -e`
       render: shell

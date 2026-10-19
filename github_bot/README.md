@@ -36,7 +36,7 @@ Production multi-agent GitHub review and issue triage bot for
 5. **🎯 Decision-First Issue Triage (0–100 Quality Scoring)**:
    - Structured checklist with required sections (`CLASSIFICATION`, `ACTIONABILITY`, `ROOT_CAUSE_HYPOTHESES`,
      `QUALITY_BREAKDOWN`, `MISSING_INFO`).
-   - Audio Dummy Output, `/dev/cros_fp` permissions, HWDB DMI mismatch, and S0ix Modern Standby playbooks.
+   - Audio Dummy Output (stale UCM PCM index `,1`/`,2` vs device `0`), `/dev/cros_fp` permissions, HWDB DMI mismatch, and S0ix Modern Standby playbooks.
    - Automated label application from allowlisted tags.
    - Sticky comments: updates existing bot comments in-place without timeline spam.
 
@@ -69,8 +69,8 @@ python3 github_bot/src/github_runner.py --mode=review --dry-run
 Dry-run issue triage on local issue text:
 
 ```bash
-ISSUE_TITLE="[Bug]: No sound after installing Ubuntu 24.04" \
-ISSUE_BODY="Sound card shows Dummy Output in settings. aplay -l shows card 0 sofrt5682." \
+ISSUE_TITLE="[Bug]: No sound after installing Ubuntu 26.04" \
+ISSUE_BODY="Settings show only Dummy Output. wpctl status lists no Built-in Speakers (SSM4567); aplay -l shows SSM4567 [AVS I2S SSM4567] with PCM device 0 only." \
 python3 github_bot/src/github_runner.py --mode=triage --dry-run
 ```
 

@@ -39,24 +39,43 @@
 
 ## 🔊 音效問題 (Audio)
 
-### 1. 系統音效無聲 / 預設跑到 HDMI（Chell AVS 常見）
+### 1. 系統音效無聲 — 只剩 `Dummy Output`（kernel >= 6.16 的 UCM PCM 索引錯配）
 
-* **檢查**：`aplay -l` 應有 `SSM4567`（喇叭）、`NAU8825`（耳機）、`DMIC`；`wpctl status` 的 `*` 應是 `Built-in Speakers (SSM4567)`，不是 HDMI。
-* **根本原因**：見 [audio/docs/root-cause.md](https://github.com/samson1357924/hp-chromebook-13-g1-linux/blob/main/audio/docs/root-cause.md) 三件套 — HDMI 搶 `default`、UCM fallback 缺失（`alsaucm -c hw:SSM4567 dump text` 報 `-2`）、`DSP Volume=0`（範圍 `0..2147483647`，`120` 仍算 mute）。
+* **檢查**：`wpctl status` 的 Sinks 只剩 `Dummy Output`（沒有 `* Built-in Speakers (SSM4567)`）；`pw-dump` 顯示每張 AVS 卡只有 `{off, pro-audio}`、作用中 profile 為 `off`；`aplay -D hw:SSM4567,1 ...` 報 `No such file or directory`（ENOENT）——這就是故障特徵；健康系統上 device 存在（裸 `aplay -D hw:SSM4567,0` 在 PipeWire sink 佔用 PCM 時會回 `EBUSY`，屬正常）。kernel >= 6.16 起 SSM4567/NAU8825/DMIC 只暴露 PCM device `0`；HDMI 卡（`avs_hdaudio`）仍保有 device `0`-`2`（HDMI1-HDMI3）。
+* **根本原因**：kernel >= 6.16 重新命名 AVS 卡（`AVS I2S SSM4567`、`AVS I2S NAU8825`、`AVS DMIC`、`AVS HDMI`）並重編 FE PCM 編號；發行版 UCM 仍引用 `hw:${CardId},1`（SSM4567/NAU8825）與 `,2`（DMIC），PipeWire 的 ACP 後端開不了 PCM、建不出 HiFi profile，所有卡停留在 profile `off`，沒有硬體 sink，PipeWire 只能退回靜音的 `Dummy Output`——應用程式「播放成功」卻無聲（exit 0）。完整鏈路見 [audio/docs/root-cause.md](https://github.com/samson1357924/hp-chromebook-13-g1-linux/blob/main/audio/docs/root-cause.md)。
+  * `alsaucm -c hw:SSM4567 dump text` 可能 exit 0 並顯示 `Verb.HiFi`，但 profile 仍建構失敗——解析成功**不代表** PCM 開得起來。
+  * 次要：HDMI 與喇叭的優先權平手，由 `50-avs-chell.conf` 修正（喇叭 1500 > HDMI 500；主要在有帶音訊的螢幕時才影響）。
 * **解決方法**：執行本專案一鍵安裝指令：
 
   ```bash
-  sudo ./audio/install-audio.sh --install
+  sudo ./audio/install-audio.sh --install   # conf.d symlink + ,1/,2 -> ,0 + mixer + WirePlumber
   ./audio/diagnose-audio.sh
+  wpctl status                              # 應見 Built-in Speakers (SSM4567) + Internal Digital Mic (DMIC)
   speaker-test -D plughw:SSM4567,0 -c2 -l1
   ```
 
+  > **`alsa-ucm-conf` 套件更新後請重跑安裝器**：更新會覆寫已修補的 UCM HiFi 檔，`,1`／`,2` 舊索引會回來。
   Chell 使用 Intel AVS（`snd_soc_avs`），不需要 SOF UCM（與 c640 的 `sof-rt5682` 不同）。
 
-### 2. `amixer -cSSM4567` 音量極低或 `DSP Volume=0`，聽不到
+### 1.1 內建麥克風 (DMIC) 無聲或裝置消失
 
-* **根本原因**：重裝/重啟後 `Left/Right Master` 被重置到 `15/255 (-65dB)`、`DSP Volume` 回到 `0`，等效靜音但開關顯示 `[on]`。
-* **解決方法**：重跑 `sudo ./audio/install-audio.sh --install`（會設 `Left/Right Master 191`、`DSP 1500000000` 並 `alsactl store`），再用 `wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.9` 拉大。
+* **根本原因**：與上方相同的 UCM PCM 索引問題——DMIC 擷取引用 `hw:${CardId},2`，但 kernel >= 6.16 只暴露 device `0`；安裝器也會把 `,2` 改寫為 `,0`。
+* **檢查／解決方法**：
+
+  ```bash
+  sudo ./audio/install-audio.sh --install      # 同時修 DMIC CapturePCM 索引
+  wpctl status                                 # Sources: Internal Digital Mic (DMIC)
+  arecord -D plughw:DMIC,0 -d2 -f S16_LE -r48000 -c2 /tmp/mic.wav
+  aplay -D plughw:SSM4567,0 /tmp/mic.wav       # 或用其他裝置檢視 WAV
+  ```
+
+  `dmesg` 的 DMIC NHLT 警告 `Endpoint format configuration not found` 無害。
+
+### 2. 登入後喇叭音量極低或無聲
+
+* **根本原因**：登入時 WirePlumber 會還原它儲存的節點音量（實測低至 `0.06`）並寫回 `DSP Volume`，覆蓋安裝器設定；重裝/重啟後 `Left/Right Master` 也會重置到 `15/255 (-65dB)`、`DSP Volume` 回到 `0`，等效靜音但開關顯示 `[on]`。
+* **檢查**：`wpctl get-volume @DEFAULT_AUDIO_SINK@`（diagnose 腳本在低於 `0.2` 時警告）。
+* **解決方法**：持久旋鈕是 `wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.5`；若 mixer 本身被重置，再重跑 `sudo ./audio/install-audio.sh --install`（會設 `Left/Right Master 191`、`DSP 1500000000` 並 `alsactl store`）。
 
 ### 3. 耳機插入後喇叭仍出聲，或無法自動切換
 

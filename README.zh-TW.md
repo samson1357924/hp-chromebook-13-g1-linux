@@ -17,23 +17,23 @@
 將已刷 MrChromebox UEFI `2606.1` / Coreboot 的 HP Chromebook 13 G1 變為可日常使用的 Linux 筆電：
 
 - **顯示** — 修復 `i915` 黑屏陷阱（`CDCLK 337.5 → 450 MHz`，`FIFO underrun` 近零）`i915.enable_psr=0 fbc=0 dc=0` + `chell-cdclk-fix.service`
-- **音訊** — Intel AVS（`snd_soc_avs`）三卡分流：`SSM4567` 喇叭 + `NAU8825` 耳機 + `DMIC`，UCM2 + WirePlumber `50-avs-chell.conf`
+- **音訊** — Intel AVS（`snd_soc_avs`）三卡分流：`SSM4567` 喇叭 + `NAU8825` 耳機 + `DMIC`；安裝器就地修補發行版 UCM（PCM 索引 `,1`／`,2` → `,0` + `conf.d` fallback）+ WirePlumber `50-avs-chell.conf`
 - **鍵盤** — ChromeOS EC 頂排透過 `systemd-hwdb` `90-chromebook-keyboard.hwdb`（零開銷）與選用 `keyd` `cros.conf`；背光 `chromeos::kbd_backlight`（max 100）經 `61-chromeos-kbd-backlight.rules`
 - **電源與 EC** — TLP `99-hp-chell.conf`、`cros_ec` 電池上限 `85%`（本機）/ `90%`（預設）`c640-battery-limit.service`、風扇 `c640-ec-control`、`[s2idle] deep` 休眠
 - **自動化與安全** — `setup.sh --all/--dry-run/--uninstall` 含備份/manifest、`detect-hardware.sh` / `diagnose-audio.sh` / `sysreport.sh`
 
-> **誠實狀態** — `docs/zh-TW/verification.md:3` `最後驗證 2026-08-29` 於 `Ubuntu 26.04.1 / 7.0.0-30 / PipeWire 1.6.2 / Wayland`。見[相容性矩陣](docs/zh-TW/COMPATIBILITY.md)與[實測驗證](docs/zh-TW/verification.md)的 🟢/⚠️/⛔ 證據。
+> **誠實狀態** — 最近一次完整驗證 `2026-08-29`（`Ubuntu 26.04.1 / 7.0.0-30 / PipeWire 1.6.2 / Wayland`）；音訊已於 `2026-10-19`（kernel `7.0.0-38`）重新驗證。見[實測驗證](docs/zh-TW/verification.md)的 `## 已驗證（2026-10-19）`／`## 已驗證（2026-08-29）`與[相容性矩陣](docs/zh-TW/COMPATIBILITY.md)的 🟢/⚠️/⛔ 證據。
 
 ---
 
 ## 📊 硬體狀態（精簡）
 
-> 完整矩陣：[docs/zh-TW/COMPATIBILITY.md](docs/zh-TW/COMPATIBILITY.md) · 16 列 · 最後驗證 `2026-08-29` · 見[實測驗證](docs/zh-TW/verification.md)
+> 完整矩陣：[docs/zh-TW/COMPATIBILITY.md](docs/zh-TW/COMPATIBILITY.md) · 16 列 · 最後驗證 `2026-08-29`（音訊 `2026-10-19` 重新驗證） · 見[實測驗證](docs/zh-TW/verification.md)
 
 | 元件 | 狀態 | 驅動 / 方案 | 備註 |
 | :--- | :---: | :--- | :--- |
 | **顯示 / GPU** | 🟢 已驗證 | `i915` `psr=0 fbc=0 dc=0` | `3200x1800@60 361.31 MHz` CDCLK 450 MHz，FIFO 近零 — [深度解析](docs/zh-TW/deep-dive/i915-graphics-cdclk.md) |
-| **喇叭 / 麥克風 / 耳機** | 🟢 正常 | `avs_ssm4567` / `avs_nau8825` / `avs_dmic` | 三 ALSA 卡，PipeWire 正常 — [AVS 深度解析](docs/zh-TW/deep-dive/intel-avs-audio.md) |
+| **喇叭 / 麥克風 / 耳機** | 🟢 正常 | `avs_ssm4567` / `avs_nau8825` / `avs_dmic` | Sink `Built-in Speakers (SSM4567)` + source `Internal Digital Mic (DMIC)`，麥克風已驗證 2026-10-19；`alsa-ucm-conf` 更新後請重跑 `audio/install-audio.sh` — [AVS 深度解析](docs/zh-TW/deep-dive/intel-avs-audio.md) |
 | **鍵盤頂排 + 背光** | 🟢 已驗證 | `hwdb` / `keyd` + `cros_ec` | `evtest` 已映射，`chromeos::kbd_backlight` max 100 |
 | **電源 / EC / 電池 85%** | 🟢 正常 | `cros_ec` + `c640-battery-limit` | `BATTERY_LIMIT=85` 本機，AC 旁路 |
 | **休眠** | ⚠️ 驅動已綁定 | `[s2idle] deep` | `s2idle` 預設，`deep` 可用；上蓋週期待完整驗證 — [實測驗證](docs/zh-TW/verification.md) |
@@ -49,7 +49,7 @@
 - **韌體**：MrChromebox UEFI Full ROM `2606.1`（2026-07-14）— [韌體刷機](docs/zh-TW/FIRMWARE.md)
 - **核心**：`>=5.15` 建議 `>=6.5`（`7.0.0-30` 已驗證 `2026-08-29`，`7.0.0-14` 基線可用）
 - **發行版**：Ubuntu 26.04 / Debian、Fedora、Arch、openSUSE、NixOS — [發行版指南](docs/zh-TW/distros/ubuntu-debian.md)
-- **音訊**：PipeWire `1.6.2` + `snd_soc_avs`（無需 SOF UCM）
+- **音訊**：PipeWire `1.6.2` + `snd_soc_avs`（無需 SOF UCM）；kernel >= 6.16 需 UCM PCM 索引修補——`alsa-ucm-conf` 更新後請重跑 `audio/install-audio.sh`
 
 ---
 
@@ -75,7 +75,7 @@ chmod +x setup.sh
 | 預覽模式 | `./setup.sh --all --dry-run` |
 | 解除安裝與還原 | `./setup.sh --uninstall` |
 
-安裝後：`aplay -l` → `SSM4567 / NAU8825 / DMIC`，`wpctl status` → sinks，`lsmod | grep i915` → 已載入，`cat /sys/kernel/debug/dri/1/i915_display_info | grep CDCLK` → `450000`。
+安裝後：`aplay -l` → `SSM4567 / NAU8825 / DMIC`（PCM device `0`），`wpctl status` → `* Built-in Speakers (SSM4567)` + `Internal Digital Mic (DMIC)`，`lsmod | grep i915` → 已載入，`cat /sys/kernel/debug/dri/1/i915_display_info | grep CDCLK` → `450000`。
 
 ---
 
@@ -119,7 +119,7 @@ docs/{QUICKSTART.md,COMPATIBILITY.md,verification.md,TROUBLESHOOTING.md,UNINSTAL
 ## 🔧 疑難排解與解除安裝
 
 - **安裝後黑屏** → [地雷-01](docs/zh-TW/pitfalls/01-safe-graphics-nomodeset.md) 或 `journalctl -k | grep -E "FIFO|Atomic"`；GRUB 臨時 `nomodeset` 可恢復
-- **無聲音 / Dummy Output** → `./audio/diagnose-audio.sh` + `audio/docs/diagnostics.md` + `audio/docs/root-cause.md`
+- **無聲音 / 只剩 `Dummy Output`** → `./audio/diagnose-audio.sh`；若 sink 消失，重跑 `sudo ./audio/install-audio.sh --install` — `audio/docs/root-cause.md` + `audio/docs/diagnostics.md`
 - **上蓋休眠失效** → `scripts/check-s0ix.sh` + `docs/zh-TW/deep-dive/power-and-suspend.md`
 - **還原** → `./setup.sh --uninstall`（manifest + backup）或 `scripts/backup-restore.sh` — [解除安裝](docs/zh-TW/UNINSTALL.md)
 
