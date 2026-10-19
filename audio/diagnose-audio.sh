@@ -88,13 +88,21 @@ for rel in \
     fi
 done
 echo "  PCM index check:"
-for f in "$UCM_DST/Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0-HiFi.conf" "$UCM_DST/Intel/avs/avs_nau8825/avs_nau8825-HiFi.conf"; do
-    if [ -f "$f" ]; then
-        if grep -q 'hw:${CardId},1' "$f" 2> /dev/null; then
-            echo "    [WARN] $f contains hw:\${CardId},1"
-        else
-            echo "    [OK] $f"
-        fi
+for f in \
+    "$UCM_DST/Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0-HiFi.conf" \
+    "$UCM_DST/Intel/avs/avs_nau8825/avs_nau8825-HiFi.conf" \
+    "$UCM_DST/Intel/avs/avs_nau8825/Hewlett_Packard-Chell-1.0-HiFi.conf" \
+    "$UCM_DST/Intel/avs/avs_dmic/DMIC-2ch-HiFi.conf" \
+    "$UCM_DST/Intel/avs/avs_dmic/DMIC-4ch-HiFi.conf"; do
+    [ -f "$f" ] || continue
+    # Legacy templates ship ,1 (speaker/headset) or ,2 (DMIC); every AVS card
+    # exposes its FE PCM as device 0 on kernels >= 6.16. The boundary keeps
+    # multi-digit indices (,10/,12/,20) from matching.
+    if grep -qE 'hw:\$\{CardId\},[12]([^0-9]|$)' "$f" 2> /dev/null; then
+        pcm_idx="$(grep -oE 'hw:\$\{CardId\},[12]' "$f" | head -n 1 | sed 's/.*,//')"
+        echo "    [WARN] $f contains hw:\${CardId},$pcm_idx (expected hw:\${CardId},0)"
+    else
+        echo "    [OK] $f (hw:\${CardId},0)"
     fi
 done
 if command -v alsaucm > /dev/null 2>&1; then
@@ -124,13 +132,91 @@ fi
 echo ""
 
 echo "--- [6/6] PipeWire / WirePlumber ---"
+wp_status_out=""
+wp_audio_out=""
 if command -v wpctl > /dev/null 2>&1; then
-    wpctl status 2> /dev/null | sed -n '/^Audio/,/^Video/p' | sed 's/^/  /' || echo "  [INFO] PipeWire not running"
+    wp_status_out="$(wpctl status 2> /dev/null || true)"
+    if [ -n "$wp_status_out" ]; then
+        wp_audio_out="$(printf '%s\n' "$wp_status_out" | sed -n '/^Audio/,/^Video/p')"
+        if [ -n "$wp_audio_out" ]; then
+            printf '%s\n' "$wp_audio_out" | sed 's/^/  /'
+        fi
+    else
+        echo "  [INFO] PipeWire not running"
+    fi
 fi
+# Speaker sink presence: with a stale UCM PCM index the AVS HiFi profile fails
+# to build, cards keep profile "off" and PipeWire only offers the silent
+# fallback "Dummy Output" (auto_null). Only a real sink node counts: it owns
+# ports (pw-link) and an 'alsa_output...ssm4567...' node name, while a bare
+# ALSA device node is called 'alsa_card...' and must never satisfy the check.
+wp_sink="unknown"
+if [ -n "$wp_status_out" ]; then
+    if printf '%s\n' "$wp_audio_out" | sed -n '/Sinks:/,/Sources:/p' | grep -qi 'ssm4567'; then
+        wp_sink="ok"
+    else
+        wp_sink="missing"
+    fi
+elif command -v wpctl > /dev/null 2>&1; then
+    wp_sink="nosession"
+elif command -v pw-link > /dev/null 2>&1; then
+    if pw-link -io 2> /dev/null | grep -qi 'ssm4567'; then
+        wp_sink="ok"
+    else
+        wp_sink="missing"
+    fi
+elif command -v pw-dump > /dev/null 2>&1; then
+    if pw-dump 2> /dev/null | grep -qE '"node.name"[[:space:]]*:[[:space:]]*"alsa_output[^"]*ssm4567'; then
+        wp_sink="ok"
+    else
+        wp_sink="missing"
+    fi
+fi
+case "$wp_sink" in
+    ok)
+        echo "  [OK] PipeWire exposes the AVS speaker sink (SSM4567)"
+        ;;
+    missing)
+        echo "  [WARN] No SSM4567 speaker sink in PipeWire - audio likely plays to the silent 'Dummy Output' (auto_null)"
+        echo "         The AVS card profile probably failed to build (cards show only {off, pro-audio}, active 'off')."
+        echo "         On current kernels only 'hw:SSM4567,0' exists; 'aplay -D hw:SSM4567,1' fails with ENOENT."
+        echo "         See audio/docs/root-cause.md - fix: sudo ./audio/install-audio.sh --install"
+        ;;
+    nosession)
+        echo "  [WARN] Cannot list PipeWire sinks (PipeWire not running? under sudo, re-run as your desktop user)"
+        ;;
+    *)
+        echo "  [INFO] wpctl, pw-link and pw-dump all unavailable - cannot verify the PipeWire speaker sink"
+        ;;
+esac
 if command -v pw-dump > /dev/null 2>&1; then
     echo "  ALSA nodes (pw-dump):"
     pw-dump 2> /dev/null | grep -o '"node.name" : "alsa[^"]*"' | sort -u | sed 's/^/    /' || true
-    echo "  Default sink: $(wpctl status 2> /dev/null | grep -E '\*.*alsa_output' | head -n1 | sed 's/^/    /')"
+    echo "  Default sink: $(printf '%s\n' "$wp_status_out" | grep -E '\*.*alsa_output' | head -n1 | sed 's/^/    /')"
+fi
+# WirePlumber restores a saved node volume on login, which can override the
+# installer's 'DSP Volume' mixer value and leave playback nearly silent.
+if command -v wpctl > /dev/null 2>&1; then
+    vol_out="$(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2> /dev/null || true)"
+    if [ -z "$vol_out" ]; then
+        echo "  [INFO] No default sink volume reported (no default sink, or wpctl cannot reach PipeWire)"
+    else
+        echo "  Default sink volume: $vol_out"
+        if command -v awk > /dev/null 2>&1; then
+            vol_num="$(printf '%s\n' "$vol_out" | awk '/^Volume:/ {print $2; exit}')"
+            if [ -n "$vol_num" ] && awk -v v="$vol_num" 'BEGIN { exit !(v ~ /^[0-9]+(\.[0-9]+)?$/ && v < 0.2) }'; then
+                echo "  [WARN] Default sink volume is very low (${vol_num} < 0.2) - output may be nearly inaudible"
+                echo "         Hint: wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.5"
+            fi
+        else
+            echo "  [INFO] awk not available - skipping low-volume evaluation"
+        fi
+        case "$vol_out" in
+            *"[MUTED]"*) echo "  [WARN] Default sink is muted - hint: wpctl set-mute @DEFAULT_AUDIO_SINK@ 0" ;;
+        esac
+    fi
+else
+    echo "  [INFO] wpctl not available - skipping default sink volume check"
 fi
 if command -v systemctl > /dev/null 2>&1; then
     echo "  User services: $(systemctl --user is-active pipewire wireplumber 2> /dev/null | tr '\n' ' ')"

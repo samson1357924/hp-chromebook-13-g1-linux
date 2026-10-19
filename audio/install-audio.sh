@@ -97,13 +97,22 @@ check_audio_status() {
     done
 
     log_info "UCM PCM Index (should be hw:\${CardId},0):"
-    for f in "$UCM_DST/Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0-HiFi.conf" "$UCM_DST/Intel/avs/avs_nau8825/avs_nau8825-HiFi.conf"; do
-        if [ -f "$f" ]; then
-            if grep -q 'hw:${CardId},1' "$f" 2> /dev/null; then
-                log_warn "  $f still contains hw:\${CardId},1 (needs fix)"
-            else
-                log_success "  $f PCM index OK"
-            fi
+    local pcm_idx
+    for f in \
+        "$UCM_DST/Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0-HiFi.conf" \
+        "$UCM_DST/Intel/avs/avs_nau8825/avs_nau8825-HiFi.conf" \
+        "$UCM_DST/Intel/avs/avs_nau8825/Hewlett_Packard-Chell-1.0-HiFi.conf" \
+        "$UCM_DST/Intel/avs/avs_dmic/DMIC-2ch-HiFi.conf" \
+        "$UCM_DST/Intel/avs/avs_dmic/DMIC-4ch-HiFi.conf"; do
+        [ -f "$f" ] || continue
+        # Legacy UCM templates ship ,1 (speaker/headset) or ,2 (DMIC); all AVS
+        # cards expose the FE PCM as device 0 (kernel >= 6.16 renumbering).
+        # The boundary keeps multi-digit indices (,10/,12/,20) from matching.
+        if grep -qE 'hw:\$\{CardId\},[12]([^0-9]|$)' "$f" 2> /dev/null; then
+            pcm_idx="$(grep -oE 'hw:\$\{CardId\},[12]' "$f" | head -n 1 | sed 's/.*,//' || true)"
+            log_warn "  $f still contains hw:\${CardId},$pcm_idx (needs fix - run with --install)"
+        else
+            log_success "  $f PCM index OK (hw:\${CardId},0)"
         fi
     done
 
@@ -226,7 +235,7 @@ fix_ucm_fallbacks() {
 }
 
 fix_ucm_pcm_index() {
-    log_info "Fixing UCM PCM indices (hw:\${CardId},1 -> hw:\${CardId},0) ..."
+    log_info "Fixing UCM PCM indices (hw:\${CardId},1|,2 -> hw:\${CardId},0) ..."
     local files=(
         "$UCM_DST/Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0-HiFi.conf"
         "$UCM_DST/Intel/avs/avs_nau8825/avs_nau8825-HiFi.conf"
@@ -236,12 +245,15 @@ fix_ucm_pcm_index() {
     )
     for f in "${files[@]}"; do
         [ -f "$f" ] || continue
-        if grep -q 'hw:${CardId},1' "$f" 2> /dev/null; then
+        # Boundary required: ,10/,12/,20 are multi-digit indices, not ,1/,2.
+        if grep -qE 'hw:\$\{CardId\},[12]([^0-9]|$)' "$f" 2> /dev/null; then
             backup_file_manifest_aware "$f" "audio"
             if [ "${DRY_RUN:-0}" = "1" ]; then
-                log_dryrun "sed -i 's/hw:\${CardId},1/hw:\${CardId},0/g' $f"
+                log_dryrun "sed -i -e 's/hw:\${CardId},\([12]\)\([^0-9]\)/hw:\${CardId},0\2/g' -e 's/hw:\${CardId},\([12]\)\$/hw:\${CardId},0/' $f"
             else
-                sudo sed -i 's/hw:${CardId},1/hw:${CardId},0/g' "$f"
+                sudo sed -i \
+                    -e 's/hw:${CardId},\([12]\)\([^0-9]\)/hw:${CardId},0\2/g' \
+                    -e 's/hw:${CardId},\([12]\)$/hw:${CardId},0/' "$f"
                 log_success "  Fixed PCM index: $f"
             fi
         else
