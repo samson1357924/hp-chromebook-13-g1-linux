@@ -312,6 +312,7 @@ rollback_component() {
     if command -v python3 > /dev/null 2>&1; then
         local allowed_prefixes
         allowed_prefixes="${CROS_ENABLEMENT_ALLOWED_PREFIXES:-/etc/ /usr/ /lib/ /lib64/ /opt/ /var/lib/fprint/}"
+        local py_rc=0
         sudo python3 -c '
 import json, os, sys, shutil, glob, fnmatch
 
@@ -417,9 +418,14 @@ data["records"] = remaining_records
 with open(tmp_manifest, "w") as f:
     json.dump(data, f, indent=2)
 os.replace(tmp_manifest, manifest_path)
-' "$MANIFEST_FILE" "$target_comp" "$BACKUP_BASE_DIR" "$allowed_prefixes"
+' "$MANIFEST_FILE" "$target_comp" "$BACKUP_BASE_DIR" "$allowed_prefixes" || py_rc=$?
+        if [ "$py_rc" -ne 0 ]; then
+            log_error "Rollback failed for component [$target_comp] (rc=$py_rc)."
+            return "$py_rc"
+        fi
     else
-        log_warn "python3 not found; automatic rollback unavailable. Files may need manual restoration."
+        log_error "python3 not found; automatic rollback is unavailable. Files may need manual restoration."
+        return 1
     fi
 
     log_success "Rollback for component [$target_comp] finished!"

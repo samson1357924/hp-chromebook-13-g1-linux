@@ -21,6 +21,171 @@ WP_DST="/etc/wireplumber/wireplumber.conf.d"
 WP_SRC_DISABLE="$ROOT_DIR/power/wireplumber/50-disable-suspend.conf"
 WP_SRC_AVS="$SCRIPT_DIR/wireplumber/50-avs-chell.conf"
 
+# Kernel module parameter that selects the pre-6.16 AVS card names/PCM
+# numbering. It exists only on kernels carrying the AVS board-name rework.
+# Both variables can be pointed at fixtures by the hermetic tests.
+AVS_OBSOLETE_PARAM="${CROS_AVS_OBSOLETE_PARAM_FILE:-/sys/module/snd_soc_avs/parameters/obsolete_card_names}"
+AVS_KERNEL_RELEASE="${CROS_AVS_KERNEL_RELEASE:-}"
+AVS_MODPROBE_DIR="${CROS_AVS_MODPROBE_DIR:-/etc/modprobe.d}"
+AVS_CMDLINE_FILE="${CROS_AVS_CMDLINE_FILE:-/proc/cmdline}"
+
+# UCM files that may carry the front-end PCM index for the Chell AVS cards.
+# Printed as a function so tests can override UCM_DST after sourcing.
+ucm_pcm_files() {
+    printf '%s\n' \
+        "$UCM_DST/Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0-HiFi.conf" \
+        "$UCM_DST/Intel/avs/avs_nau8825/avs_nau8825-HiFi.conf" \
+        "$UCM_DST/Intel/avs/avs_nau8825/Hewlett_Packard-Chell-1.0-HiFi.conf" \
+        "$UCM_DST/Intel/avs/avs_dmic/DMIC-2ch-HiFi.conf" \
+        "$UCM_DST/Intel/avs/avs_dmic/DMIC-4ch-HiFi.conf"
+}
+
+# Legacy templates ship hw:${CardId},1 (SSM4567/NAU8825 playback and NAU8825
+# capture) and hw:${CardId},2 (DMIC capture). The right boundary keeps
+# multi-digit indices (,10/,12/,20) from matching.
+UCM_STALE_INDEX_RE='hw:\$\{CardId\},[12]([^0-9]|$)'
+UCM_ZERO_INDEX_RE='hw:\$\{CardId\},0([^0-9]|$)'
+
+avs_obsolete_override() {
+    # Print legacy/new for the LAST explicit obsolete_card_names= setting in
+    # the kernel cmdline or modprobe.d, or nothing if absent. Only the AVS
+    # module (or an unprefixed cmdline setting) is considered; values are
+    # case-insensitive. The kernel cmdline wins over modprobe.d, matching the
+    # kernel's module-parameter precedence.
+    local token val f line module rest found=""
+    local -a tokens rest_tokens
+    if [ -r "$AVS_CMDLINE_FILE" ]; then
+        read -r -a tokens <<< "$(tr '\n' ' ' < "$AVS_CMDLINE_FILE" 2> /dev/null)"
+        for token in "${tokens[@]}"; do
+            case "$token" in
+                obsolete_card_names=* | snd-soc-avs.obsolete_card_names=* | snd_soc_avs.obsolete_card_names=*)
+                    val="${token#*=}"
+                    val="$(printf '%s' "$val" | tr '[:upper:]' '[:lower:]')"
+                    case "$val" in
+                        1 | y | yes | on | true) found=legacy ;;
+                        0 | n | no | off | false) found=new ;;
+                    esac
+                    ;;
+            esac
+        done
+    fi
+    if [ -n "$found" ]; then
+        echo "$found"
+        return 0
+    fi
+    for f in "$AVS_MODPROBE_DIR"/*.conf; do
+        [ -f "$f" ] || continue
+        while IFS= read -r line; do
+            line="${line%%#*}"
+            [[ "$line" =~ ^[[:space:]]*options[[:space:]]+([^[:space:]]+)[[:space:]]+(.*)$ ]] || continue
+            module="${BASH_REMATCH[1]}"
+            rest="${BASH_REMATCH[2]}"
+            case "$module" in snd-soc-avs | snd_soc_avs) ;; *) continue ;; esac
+            read -r -a rest_tokens <<< "$rest"
+            for token in "${rest_tokens[@]}"; do
+                case "$token" in
+                    obsolete_card_names=*)
+                        val="${token#*=}"
+                        val="$(printf '%s' "$val" | tr '[:upper:]' '[:lower:]')"
+                        case "$val" in
+                            1 | y | yes | on | true) found=legacy ;;
+                            0 | n | no | off | false) found=new ;;
+                        esac
+                        ;;
+                esac
+            done
+        done < "$f"
+    done
+    if [ -n "$found" ]; then
+        echo "$found"
+    fi
+    return 0
+}
+
+avs_numbering_mode() {
+    # Print "legacy" for the pre-6.16 numbering (device 1/2 still valid) or
+    # "new" for the 6.16+ renumbering (every AVS FE PCM is device 0).
+    # Prefer the module parameter (also covers backports and
+    # obsolete_card_names=1); fall back to the kernel release.
+    local val rel major minor
+    if [ -r "$AVS_OBSOLETE_PARAM" ]; then
+        val="$(tr '[:upper:]' '[:lower:]' < "$AVS_OBSOLETE_PARAM" 2> /dev/null | tr -d '[:space:]' || true)"
+        case "$val" in
+            1 | y | yes | on | true)
+                echo legacy
+                return 0
+                ;;
+            0 | n | no | off | false)
+                echo new
+                return 0
+                ;;
+        esac
+    fi
+    # The module may not be loaded yet, so sysfs is unavailable. Honor an
+    # explicit modprobe/cmdline override before falling back to the release.
+    val="$(avs_obsolete_override)"
+    if [ -n "$val" ]; then
+        echo "$val"
+        return 0
+    fi
+    rel="${AVS_KERNEL_RELEASE:-$(uname -r 2> /dev/null || true)}"
+    major="${rel%%.*}"
+    minor="${rel#*.}"
+    minor="${minor%%.*}"
+    case "$major" in '' | *[!0-9]*) major=0 ;; esac
+    case "$minor" in '' | *[!0-9]*) minor=0 ;; esac
+    if [ "$major" -gt 6 ] || { [ "$major" -eq 6 ] && [ "$minor" -ge 16 ]; }; then
+        echo new
+    else
+        echo legacy
+    fi
+}
+
+ucm_pcm_index_of() {
+    # First stale index in a file, with the same right boundary as the guard.
+    grep -oE "$UCM_STALE_INDEX_RE" "$1" 2> /dev/null \
+        | head -n 1 | sed -E 's/.*,([12]).*/\1/' || true
+}
+
+wpctl_as_real_user() {
+    # $1 = 0 (interactive sudo) or 1 (non-interactive); remaining args go to
+    # wpctl. Falls back to the current session when there is no login session.
+    local noninteractive="$1"
+    shift
+    local real_user real_uid me
+    local sudo_args=()
+    real_user="$(get_real_user 2> /dev/null || true)"
+    real_uid="$(get_real_user_uid 2> /dev/null || true)"
+    me="$(id -un 2> /dev/null || true)"
+    if [ -n "$real_user" ] && [ "$real_user" != "root" ] && [ -d "/run/user/$real_uid" ]; then
+        if [ "$real_user" = "$me" ]; then
+            XDG_RUNTIME_DIR="/run/user/$real_uid" wpctl "$@" 2> /dev/null || true
+        else
+            [ "$noninteractive" = "1" ] && sudo_args=(-n)
+            sudo "${sudo_args[@]}" -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" wpctl "$@" 2> /dev/null || true
+        fi
+    else
+        wpctl "$@" 2> /dev/null || true
+    fi
+}
+
+wpctl_set_default() {
+    # Preserve wpctl's exit status so the caller can report a failed pin.
+    local id="$1" real_user real_uid me
+    real_user="$(get_real_user 2> /dev/null || true)"
+    real_uid="$(get_real_user_uid 2> /dev/null || true)"
+    me="$(id -un 2> /dev/null || true)"
+    if [ -n "$real_user" ] && [ "$real_user" != "root" ] && [ -d "/run/user/$real_uid" ]; then
+        if [ "$real_user" = "$me" ]; then
+            XDG_RUNTIME_DIR="/run/user/$real_uid" wpctl set-default "$id" 2> /dev/null
+        else
+            sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" wpctl set-default "$id" 2> /dev/null
+        fi
+    else
+        wpctl set-default "$id" 2> /dev/null
+    fi
+}
+
 show_help() {
     echo "Usage: $0 [OPTIONS]"
     echo ""
@@ -68,11 +233,22 @@ check_audio_status() {
     check_avs_firmware_local || true
 
     log_info "ALSA Sound Cards:"
+    local cards
     if command -v aplay > /dev/null 2>&1; then
-        LC_ALL=C aplay -l 2> /dev/null | grep -E "^card [0-9]+:" | while read -r line; do log_info "  $line"; done || log_warn "No sound cards detected."
+        cards="$(LC_ALL=C aplay -l 2> /dev/null | grep -E "^card [0-9]+:" || true)"
+        if [ -n "$cards" ]; then
+            while IFS= read -r line; do log_info "  $line"; done <<< "$cards"
+        else
+            log_warn "  No playback sound cards detected."
+        fi
     fi
     if command -v arecord > /dev/null 2>&1; then
-        LC_ALL=C arecord -l 2> /dev/null | grep -E "^card [0-9]+:" | while read -r line; do log_info "  $line"; done || true
+        cards="$(LC_ALL=C arecord -l 2> /dev/null | grep -E "^card [0-9]+:" || true)"
+        if [ -n "$cards" ]; then
+            while IFS= read -r line; do log_info "  $line"; done <<< "$cards"
+        else
+            log_warn "  No capture sound cards detected."
+        fi
     fi
 
     log_info "UCM Fallback Symlinks ($UCM_DST/conf.d):"
@@ -96,25 +272,8 @@ check_audio_status() {
         fi
     done
 
-    log_info "UCM PCM Index (should be hw:\${CardId},0):"
-    local pcm_idx
-    for f in \
-        "$UCM_DST/Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0-HiFi.conf" \
-        "$UCM_DST/Intel/avs/avs_nau8825/avs_nau8825-HiFi.conf" \
-        "$UCM_DST/Intel/avs/avs_nau8825/Hewlett_Packard-Chell-1.0-HiFi.conf" \
-        "$UCM_DST/Intel/avs/avs_dmic/DMIC-2ch-HiFi.conf" \
-        "$UCM_DST/Intel/avs/avs_dmic/DMIC-4ch-HiFi.conf"; do
-        [ -f "$f" ] || continue
-        # Legacy UCM templates ship ,1 (speaker/headset) or ,2 (DMIC); all AVS
-        # cards expose the FE PCM as device 0 (kernel >= 6.16 renumbering).
-        # The boundary keeps multi-digit indices (,10/,12/,20) from matching.
-        if grep -qE 'hw:\$\{CardId\},[12]([^0-9]|$)' "$f" 2> /dev/null; then
-            pcm_idx="$(grep -oE 'hw:\$\{CardId\},[12]' "$f" | head -n 1 | sed 's/.*,//' || true)"
-            log_warn "  $f still contains hw:\${CardId},$pcm_idx (needs fix - run with --install)"
-        else
-            log_success "  $f PCM index OK (hw:\${CardId},0)"
-        fi
-    done
+    log_info "UCM PCM Index:"
+    check_ucm_pcm_index || miss=1
 
     log_info "ALSA Mixers (using ALSA IDs - card numbers are dynamic):"
     for id in SSM4567 NAU8825 DMIC HDMI; do
@@ -122,7 +281,13 @@ check_audio_status() {
             log_info "  Card $id: $(amixer -c"$id" info 2> /dev/null | head -n1) - $(amixer -c"$id" scontrols 2> /dev/null | head -n 3 | tr '\n' ';')"
         fi
     done
-    if amixer -cSSM4567 cget name='DSP Volume' 2> /dev/null | grep -q "values=0"; then
+    local dsp_volume
+    dsp_volume="$(amixer -cSSM4567 cget name='DSP Volume' 2> /dev/null || true)"
+    if ! amixer -cSSM4567 info > /dev/null 2>&1; then
+        log_warn "  Card SSM4567 not present; cannot verify DSP Volume"
+    elif [ -z "$dsp_volume" ]; then
+        log_warn "  Cannot verify DSP Volume on SSM4567 (control missing)"
+    elif printf '%s\n' "$dsp_volume" | grep -q "values=0"; then
         log_warn "  SSM4567 DSP Volume is 0 (muted)!"
     else
         log_success "  SSM4567 DSP Volume non-zero"
@@ -134,27 +299,30 @@ check_audio_status() {
     done
 
     if command -v wpctl > /dev/null 2>&1; then
-        # Same root-session pitfall as install verification: prefer real user's session.
-        # Avoids password prompts: same-UID queries run directly, others use non-interactive sudo.
-        local _wp_check _cu _cu_uid _me
-        _wp_check=""
-        _cu="$(get_real_user 2> /dev/null || true)"
-        _cu_uid="$(get_real_user_uid 2> /dev/null || true)"
-        _me="$(id -un 2> /dev/null || true)"
-        if [ -n "$_cu" ] && [ "$_cu" != "root" ] && [ -d "/run/user/$_cu_uid" ]; then
-            if [ "$_cu" = "$_me" ]; then
-                _wp_check=$(XDG_RUNTIME_DIR="/run/user/$_cu_uid" wpctl status 2> /dev/null || true)
-            else
-                _wp_check=$(sudo -n -u "$_cu" XDG_RUNTIME_DIR="/run/user/$_cu_uid" wpctl status 2> /dev/null || true)
-            fi
-        fi
-        [ -z "$_wp_check" ] && _wp_check=$(wpctl status 2> /dev/null || true)
+        # Same root-session pitfall as install verification: prefer the real
+        # user's session. Node names (wpctl status -n) are authoritative;
+        # descriptions are only a fallback because the WirePlumber config
+        # that adds "(SSM4567)" may not be loaded yet.
+        local _wp_check _wp_names _sink_section
+        _wp_check="$(wpctl_as_real_user 1 status)"
+        _wp_names="$(wpctl_as_real_user 1 status -n)"
         log_info "PipeWire Sinks/Sources:"
-        echo "$_wp_check" | sed -n '/Audio/,/Video/p' | head -n 40 | while read -r line; do log_info "  $line"; done || true
-        if echo "$_wp_check" | sed -n '/Sinks:/,/Sources:/p' | grep -qi "ssm4567"; then
+        if [ -n "$_wp_check" ]; then
+            printf '%s\n' "$_wp_check" | sed -n '/Audio/,/Video/{/^Video/d;p}' | head -n 40 | while IFS= read -r line; do log_info "  $line"; done
+        fi
+        _sink_section=""
+        if [ -n "$_wp_names" ]; then
+            _sink_section="$(printf '%s\n' "$_wp_names" | sed -n '/Sinks:/,/Sources:/p')"
+        fi
+        if [ -z "$_sink_section" ] && [ -n "$_wp_check" ]; then
+            _sink_section="$(printf '%s\n' "$_wp_check" | sed -n '/Sinks:/,/Sources:/p')"
+        fi
+        if printf '%s\n' "$_sink_section" | grep -qi "ssm4567"; then
             log_success "  PipeWire Speaker sink (SSM4567) active"
-        else
+        elif [ -n "$_sink_section" ]; then
             log_warn "  Speaker sink (SSM4567) not found - check UCM/WirePlumber"
+        else
+            log_warn "  Cannot read the PipeWire Sinks section - check PipeWire/WirePlumber"
         fi
     fi
 
@@ -173,13 +341,25 @@ check_audio_status() {
 
 uninstall_audio() {
     log_section "Uninstalling Chell AVS Audio Configs"
-    rollback_component "audio"
-    # Extra cleanup for empty conf.d dirs that were never tracked (if user manually created)
+    if [ ! -f "$MANIFEST_FILE" ]; then
+        # Idempotent no-op, matching the other components: a clean system has
+        # nothing to roll back and `setup.sh --uninstall --dry-run` must pass.
+        log_warn "No install manifest found at $MANIFEST_FILE; nothing to roll back."
+        return 0
+    fi
+    local rc=0
+    rollback_component "audio" || rc=1
+    if [ "$rc" -ne 0 ]; then
+        log_error "Audio rollback failed; not pruning directories or restarting services."
+        return "$rc"
+    fi
+    # Extra cleanup for empty conf.d dirs that were never tracked (if user
+    # manually created). Never remove the package-owned conf.d parent: only
+    # the avs_* directories that this installer may have created.
     if [ "${DRY_RUN:-0}" != "1" ]; then
         for d in avs_ssm4567 avs_nau8825 avs_dmic avs_hdaudio; do
             sudo rmdir --ignore-fail-on-non-empty "$UCM_DST/conf.d/$d" 2> /dev/null || true
         done
-        sudo rmdir --ignore-fail-on-non-empty "$UCM_DST/conf.d" 2> /dev/null || true
     else
         log_dryrun "Would prune empty $UCM_DST/conf.d/avs_* if empty"
     fi
@@ -199,6 +379,7 @@ uninstall_audio() {
 
 fix_ucm_fallbacks() {
     log_info "Creating UCM fallback symlinks (conf.d) ..."
+    local fail=0
     # Map: conf.d subdir -> target Intel file
     declare -A MAP=(
         ["avs_ssm4567/Hewlett_Packard-Chell-1.0.conf"]="Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0.conf"
@@ -226,44 +407,196 @@ fix_ucm_fallbacks() {
             log_warn "  Skipping $rel: source $src_abs not found in distro package"
             continue
         fi
-        backup_file_manifest_aware "$dst" "audio"
+        if ! backup_file_manifest_aware "$dst" "audio"; then
+            log_error "  Failed to back up $dst; not overwriting it"
+            fail=1
+            continue
+        fi
         if [ "${DRY_RUN:-0}" = "1" ]; then
             log_dryrun "ln -sf $src -> $dst"
-        else
-            sudo mkdir -p "$(dirname "$dst")"
-            # Use ln -sf to create/update symlink
-            sudo ln -sf "$src" "$dst"
+        elif sudo mkdir -p "$(dirname "$dst")" && sudo ln -sf "$src" "$dst"; then
             log_success "  Linked: conf.d/$rel -> $src"
+        else
+            log_error "  Failed to link conf.d/$rel -> $src"
+            fail=1
         fi
     done
+
+    # Speaker/headset/mic fallbacks are required; HDMI is optional because
+    # some AVS variants do not expose hdaudioB0D2.
+    local required
+    for required in \
+        "Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0.conf" \
+        "Intel/avs/avs_nau8825/Hewlett_Packard-Chell-1.0.conf" \
+        "Intel/avs/avs_dmic/DMIC-2ch.conf"; do
+        if [ ! -f "$UCM_DST/$required" ]; then
+            log_error "  Required UCM source missing: $UCM_DST/$required"
+            fail=1
+        fi
+    done
+    return "$fail"
+}
+
+ucm_file_is_include_only() {
+    # A legitimate Include-only UCM fragment has no PCM index. Empty or
+    # truncated files are not legitimate and must fail --check.
+    [ -s "$1" ] && grep -qE '^[[:space:]]*Include([.[:space:]]|$)' "$1" 2> /dev/null
+}
+
+check_ucm_pcm_index() {
+    # Returns 0 only when every relevant UCM file matches the active kernel
+    # numbering. Missing/unreadable/empty files and unexpected indices are
+    # failures: a stale index is exactly the silent-speaker/missing-mic
+    # regression.
+    local mode f idx miss=0
+    mode="$(avs_numbering_mode)"
+    log_info "  AVS PCM numbering: $mode"
+    while IFS= read -r f; do
+        if [ ! -f "$f" ]; then
+            log_warn "  Missing UCM file: $f"
+            miss=1
+            continue
+        fi
+        if [ ! -r "$f" ]; then
+            log_warn "  Cannot read UCM file: $f"
+            miss=1
+            continue
+        fi
+        if [ ! -s "$f" ]; then
+            log_warn "  Empty UCM file: $f"
+            miss=1
+            continue
+        fi
+        if ! grep -qE 'hw:\$\{CardId\},[0-9]+([^0-9]|$)' "$f" 2> /dev/null; then
+            if ucm_file_is_include_only "$f"; then
+                log_info "  Include-only UCM file (no literal PCM index): $f"
+            else
+                log_warn "  $f has no PCM index and is not a valid Include-only file"
+                miss=1
+            fi
+            continue
+        fi
+        if [ "$mode" = "legacy" ]; then
+            if grep -qE "$UCM_ZERO_INDEX_RE" "$f" 2> /dev/null; then
+                log_warn "  $f uses hw:\${CardId},0 but legacy AVS numbering needs ,1/,2"
+                log_warn "  Reinstall alsa-ucm-conf or disable obsolete_card_names before running --install"
+                miss=1
+            elif grep -qE "$UCM_STALE_INDEX_RE" "$f" 2> /dev/null; then
+                log_success "  Legacy PCM index OK: $f"
+            else
+                log_warn "  $f has a PCM index but none is hw:\${CardId},1|,2"
+                miss=1
+            fi
+            continue
+        fi
+        if grep -qE "$UCM_STALE_INDEX_RE" "$f" 2> /dev/null; then
+            idx="$(ucm_pcm_index_of "$f")"
+            log_warn "  $f still contains hw:\${CardId},${idx:-1|2} (needs fix - run with --install)"
+            miss=1
+        elif grep -qE "$UCM_ZERO_INDEX_RE" "$f" 2> /dev/null; then
+            log_success "  PCM index OK (hw:\${CardId},0): $f"
+        else
+            log_warn "  $f has a PCM index but none is hw:\${CardId},0"
+            miss=1
+        fi
+    done < <(ucm_pcm_files)
+    return "$miss"
 }
 
 fix_ucm_pcm_index() {
-    log_info "Fixing UCM PCM indices (hw:\${CardId},1|,2 -> hw:\${CardId},0) ..."
-    local files=(
-        "$UCM_DST/Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0-HiFi.conf"
-        "$UCM_DST/Intel/avs/avs_nau8825/avs_nau8825-HiFi.conf"
-        "$UCM_DST/Intel/avs/avs_nau8825/Hewlett_Packard-Chell-1.0-HiFi.conf"
-        "$UCM_DST/Intel/avs/avs_dmic/DMIC-2ch-HiFi.conf"
-        "$UCM_DST/Intel/avs/avs_dmic/DMIC-4ch-HiFi.conf"
-    )
-    for f in "${files[@]}"; do
-        [ -f "$f" ] || continue
-        # Boundary required: ,10/,12/,20 are multi-digit indices, not ,1/,2.
-        if grep -qE 'hw:\$\{CardId\},[12]([^0-9]|$)' "$f" 2> /dev/null; then
-            backup_file_manifest_aware "$f" "audio"
-            if [ "${DRY_RUN:-0}" = "1" ]; then
-                log_dryrun "sed -i -e 's/hw:\${CardId},\([12]\)\([^0-9]\)/hw:\${CardId},0\2/g' -e 's/hw:\${CardId},\([12]\)\$/hw:\${CardId},0/' $f"
-            else
-                sudo sed -i \
-                    -e 's/hw:${CardId},\([12]\)\([^0-9]\)/hw:${CardId},0\2/g' \
-                    -e 's/hw:${CardId},\([12]\)$/hw:${CardId},0/' "$f"
-                log_success "  Fixed PCM index: $f"
+    local mode f fail=0
+    mode="$(avs_numbering_mode)"
+    if [ "$mode" = "legacy" ]; then
+        log_info "Legacy AVS PCM numbering detected; keeping ,1/,2 UCM indices (no rewrite)."
+        while IFS= read -r f; do
+            if [ ! -f "$f" ]; then
+                log_warn "  Missing UCM file: $f"
+                fail=1
+                continue
             fi
-        else
-            log_info "  PCM index already correct: $f"
+            if [ ! -r "$f" ]; then
+                log_warn "  Cannot read UCM file: $f"
+                fail=1
+                continue
+            fi
+            if [ ! -s "$f" ]; then
+                log_warn "  Empty UCM file: $f"
+                fail=1
+                continue
+            fi
+            if ! grep -qE 'hw:\$\{CardId\},[0-9]+([^0-9]|$)' "$f" 2> /dev/null; then
+                if ucm_file_is_include_only "$f"; then
+                    log_info "  Include-only UCM file (no rewrite): $f"
+                else
+                    log_warn "  $f has no PCM index and is not a valid Include-only file"
+                    fail=1
+                fi
+                continue
+            fi
+            if grep -qE "$UCM_ZERO_INDEX_RE" "$f" 2> /dev/null; then
+                log_warn "  $f is patched to hw:\${CardId},0 but legacy numbering is active"
+                log_warn "  Reinstall alsa-ucm-conf (or disable obsolete_card_names) before using this installer"
+                fail=1
+            elif grep -qE "$UCM_STALE_INDEX_RE" "$f" 2> /dev/null; then
+                log_success "  Legacy PCM index OK: $f"
+            else
+                log_warn "  $f has a PCM index but none is hw:\${CardId},1|,2"
+                fail=1
+            fi
+        done < <(ucm_pcm_files)
+        return "$fail"
+    fi
+    log_info "Fixing UCM PCM indices (hw:\${CardId},1|,2 -> hw:\${CardId},0) ..."
+    while IFS= read -r f; do
+        if [ ! -f "$f" ]; then
+            log_warn "  Missing UCM file: $f"
+            fail=1
+            continue
         fi
-    done
+        if [ ! -r "$f" ]; then
+            log_warn "  Cannot read UCM file: $f"
+            fail=1
+            continue
+        fi
+        if [ ! -s "$f" ]; then
+            log_warn "  Empty UCM file: $f"
+            fail=1
+            continue
+        fi
+        if ! grep -qE 'hw:\$\{CardId\},[0-9]+([^0-9]|$)' "$f" 2> /dev/null; then
+            if ucm_file_is_include_only "$f"; then
+                log_info "  Include-only UCM file (no rewrite): $f"
+            else
+                log_warn "  $f has no PCM index and is not a valid Include-only file"
+                fail=1
+            fi
+            continue
+        fi
+        # Boundary required: ,10/,12/,20 are multi-digit indices, not ,1/,2.
+        if grep -qE "$UCM_STALE_INDEX_RE" "$f" 2> /dev/null; then
+            if ! backup_file_manifest_aware "$f" "audio"; then
+                log_error "  Failed to back up $f; not modifying it"
+                fail=1
+                continue
+            fi
+            if [ "${DRY_RUN:-0}" = "1" ]; then
+                log_dryrun "sed -i -e 's/hw:\${CardId},\([12]\)\([^0-9]\)/hw:\${CardId},0\2/g' -e 's/hw:\${CardId},\([12]\)\$/hw:\${CardId},0/' $(printf '%q' "$f")"
+            elif sudo sed -i \
+                -e 's/hw:${CardId},\([12]\)\([^0-9]\)/hw:${CardId},0\2/g' \
+                -e 's/hw:${CardId},\([12]\)$/hw:${CardId},0/' "$f"; then
+                log_success "  Fixed PCM index: $f"
+            else
+                log_error "  Failed to rewrite PCM index in $f"
+                fail=1
+            fi
+        elif grep -qE "$UCM_ZERO_INDEX_RE" "$f" 2> /dev/null; then
+            log_info "  PCM index already correct: $f"
+        else
+            log_warn "  $f has a PCM index but none is hw:\${CardId},0"
+            fail=1
+        fi
+    done < <(ucm_pcm_files)
+    return "$fail"
 }
 
 fix_mixers() {
@@ -336,12 +669,18 @@ deploy_wireplumber() {
                 else
                     local ts
                     ts=$(date '+%Y%m%d_%H%M%S')
-                    local backup_path="/var/backups/cros-enablement/${ts}${legacy}"
-                    sudo mkdir -p "$(dirname "$backup_path")"
-                    sudo cp -a "$legacy" "$backup_path" 2> /dev/null || true
-                    # Remove as the owning user to avoid root-owned leftover
-                    sudo -u "$real_user" rm -f "$legacy" 2> /dev/null || sudo rm -f "$legacy" 2> /dev/null || true
-                    log_success "  Removed legacy per-user config (backed up to $backup_path)"
+                    local backup_path="$BACKUP_BASE_DIR/${ts}${legacy}"
+                    if sudo mkdir -p "$(dirname "$backup_path")" \
+                        && sudo cp -a "$legacy" "$backup_path" 2> /dev/null; then
+                        # Remove as the owning user to avoid root-owned leftover
+                        if sudo -u "$real_user" rm -f "$legacy" 2> /dev/null || sudo rm -f "$legacy" 2> /dev/null; then
+                            log_success "  Removed legacy per-user config (backed up to $backup_path)"
+                        else
+                            log_warn "  Backed up but could not remove $legacy"
+                        fi
+                    else
+                        log_warn "  Backup failed; leaving $legacy in place"
+                    fi
                 fi
             fi
         done
@@ -357,8 +696,14 @@ install_audio() {
     check_avs_firmware_local || log_warn "AVS firmware check failed - will attempt to continue"
 
     log_step 1 5 "Fixing UCM fallbacks & PCM indices..."
-    fix_ucm_fallbacks
-    fix_ucm_pcm_index
+    if ! fix_ucm_fallbacks; then
+        log_error "UCM fallback symlinks could not be created; aborting install."
+        return 1
+    fi
+    if ! fix_ucm_pcm_index; then
+        log_error "UCM PCM indices are not usable for this kernel; aborting install (run --check)."
+        return 1
+    fi
 
     log_step 2 5 "Deploying WirePlumber configs..."
     deploy_wireplumber
@@ -372,7 +717,7 @@ install_audio() {
     fi
 
     log_step 4 5 "Restarting PipeWire & WirePlumber..."
-    local real_user real_uid ssm_sink wp_status
+    local real_user real_uid ssm_sink wp_status wp_names sink_section restarted=0
     real_user="$(get_real_user)"
     real_uid="$(get_real_user_uid)"
     if [ "${DRY_RUN:-0}" = "1" ]; then
@@ -380,22 +725,35 @@ install_audio() {
     else
         if [ -n "$real_user" ] && [ "$real_user" != "root" ] && [ -d "/run/user/$real_uid" ]; then
             sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" systemctl --user restart pipewire wireplumber 2> /dev/null || true
+            restarted=1
+        elif systemctl --user restart wireplumber 2> /dev/null; then
+            restarted=1
+        fi
+        if [ "$restarted" = "1" ]; then
             # WirePlumber needs 2-5s to rebuild the graph; wait before first poll
             log_info "Waiting for PipeWire graph rebuild..."
             sleep 2
-            # Poll for graph rebuild (up to 15s)
+            # Poll the Sinks section only (a Device: entry must not satisfy
+            # the check and skip the default-sink pin below).
             for _ in $(seq 1 15); do
-                if sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" wpctl status 2> /dev/null | grep -qi "ssm4567"; then
+                wp_names="$(wpctl_as_real_user 1 status -n)"
+                if printf '%s\n' "$wp_names" | sed -n '/Sinks:/,/Sources:/p' | grep -qi "ssm4567"; then
                     break
                 fi
                 sleep 1
             done
-            # Best-effort: lock default sink to SSM4567 HiFi to clear stale stereo-fallback.
-            # Takes the first sink in the Sinks: section (never a Device: entry).
-            ssm_sink=$(sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" wpctl status 2> /dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -i "ssm4567" | head -n1 | sed -E 's/^[^0-9]*([0-9]+)\..*/\1/')
+            wp_names="$(wpctl_as_real_user 1 status -n)"
+            wp_status="$(wpctl_as_real_user 1 status)"
+            sink_section="$(printf '%s\n' "$wp_names" | sed -n '/Sinks:/,/Sources:/p')"
+            if [ -z "$sink_section" ]; then
+                sink_section="$(printf '%s\n' "$wp_status" | sed -n '/Sinks:/,/Sources:/p')"
+            fi
+            # Best-effort: lock default sink to SSM4567 HiFi to clear stale
+            # stereo-fallback. Takes the first sink in the Sinks section.
+            ssm_sink="$(printf '%s\n' "$sink_section" | grep -i "ssm4567" | head -n1 | sed -E 's/^[^0-9]*([0-9]+)\..*/\1/')"
             case "$ssm_sink" in '' | *[!0-9]*) ssm_sink="" ;; esac
             if [ -n "$ssm_sink" ]; then
-                if sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" wpctl set-default "$ssm_sink" 2> /dev/null; then
+                if wpctl_set_default "$ssm_sink"; then
                     log_info "Pinned default sink to SSM4567 ($ssm_sink)."
                 else
                     log_info "SSM4567 sink $ssm_sink found, but set-default failed; leaving default unchanged."
@@ -403,26 +761,7 @@ install_audio() {
             else
                 log_info "SSM4567 sink not found, leaving default unchanged."
             fi
-            log_success "PipeWire & WirePlumber restarted for '$real_user'."
-        elif systemctl --user restart wireplumber 2> /dev/null; then
-            log_info "Waiting for PipeWire graph rebuild..."
-            sleep 2
-            for _ in $(seq 1 15); do
-                if wpctl status 2> /dev/null | grep -qi "ssm4567"; then break; fi
-                sleep 1
-            done
-            ssm_sink=$(wpctl status 2> /dev/null | sed -n '/Sinks:/,/Sources:/p' | grep -i "ssm4567" | head -n1 | sed -E 's/^[^0-9]*([0-9]+)\..*/\1/')
-            case "$ssm_sink" in '' | *[!0-9]*) ssm_sink="" ;; esac
-            if [ -n "$ssm_sink" ]; then
-                if wpctl set-default "$ssm_sink" 2> /dev/null; then
-                    log_info "Pinned default sink to SSM4567 ($ssm_sink)."
-                else
-                    log_info "SSM4567 sink $ssm_sink found, but set-default failed; leaving default unchanged."
-                fi
-            else
-                log_info "SSM4567 sink not found, leaving default unchanged."
-            fi
-            log_success "WirePlumber restarted."
+            log_success "PipeWire & WirePlumber restarted."
         else
             log_info "No active user session; changes will take effect after next login/reboot."
         fi
@@ -434,20 +773,21 @@ install_audio() {
             log_success "ALSA card 'SSM4567' present."
         fi
         # NOTE: when run via sudo, bare `wpctl status` sees root's (empty)
-        # session; query the real user's session instead to avoid false negatives.
-        wp_status=""
-        if [ -n "${real_user:-}" ] && [ "${real_user:-}" != "root" ] && [ -d "/run/user/${real_uid:-}" ]; then
-            wp_status=$(sudo -u "$real_user" XDG_RUNTIME_DIR="/run/user/$real_uid" wpctl status 2> /dev/null || true)
+        # session; wpctl_as_real_user queries the real user's session.
+        wp_status="$(wpctl_as_real_user 1 status)"
+        wp_names="$(wpctl_as_real_user 1 status -n)"
+        sink_section="$(printf '%s\n' "$wp_names" | sed -n '/Sinks:/,/Sources:/p')"
+        if [ -z "$sink_section" ]; then
+            sink_section="$(printf '%s\n' "$wp_status" | sed -n '/Sinks:/,/Sources:/p')"
         fi
-        [ -z "$wp_status" ] && wp_status=$(wpctl status 2> /dev/null || true)
-        if echo "$wp_status" | sed -n '/Sinks:/,/Sources:/p' | grep -qi "ssm4567"; then
+        if printf '%s\n' "$sink_section" | grep -qi "ssm4567"; then
             log_success "PipeWire Speaker sink (SSM4567) verified!"
         else
             log_warn "Speaker sink not yet visible - check 'wpctl status' after re-login"
         fi
         # Show default sink (first '*' line of the Sinks section; friendly names, not alsa_output)
         local default_sink
-        default_sink=$(echo "$wp_status" | sed -n '/Sinks:/,/Sources:/p' | grep -E '\*' | head -n1 | sed -E 's/^[^0-9]*//')
+        default_sink=$(printf '%s\n' "$wp_status" | sed -n '/Sinks:/,/Sources:/p' | grep -E '\*' | head -n1 | sed -E 's/^[^0-9]*//')
         if [ -n "$default_sink" ]; then
             log_info "Default sink: $default_sink"
         fi
@@ -457,39 +797,46 @@ install_audio() {
     log_success "AVS audio configuration complete! 🔊"
 }
 
-ACTION="install"
-while [ $# -gt 0 ]; do
-    case "$1" in
-        --install | -i)
-            ACTION="install"
-            shift
-            ;;
-        --check | -c)
-            ACTION="check"
-            shift
-            ;;
-        --uninstall | -u)
-            ACTION="uninstall"
-            shift
-            ;;
-        --dry-run | -n)
-            export DRY_RUN=1
-            shift
-            ;;
-        --help | -h)
-            show_help
-            exit 0
-            ;;
-        *)
-            log_error "Unknown option: $1"
-            show_help
-            exit 1
-            ;;
-    esac
-done
+main() {
+    local action="install"
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --install | -i)
+                action="install"
+                shift
+                ;;
+            --check | -c)
+                action="check"
+                shift
+                ;;
+            --uninstall | -u)
+                action="uninstall"
+                shift
+                ;;
+            --dry-run | -n)
+                export DRY_RUN=1
+                shift
+                ;;
+            --help | -h)
+                show_help
+                exit 0
+                ;;
+            *)
+                log_error "Unknown option: $1"
+                show_help
+                exit 1
+                ;;
+        esac
+    done
 
-case "$ACTION" in
-    install) install_audio ;;
-    check) check_audio_status ;;
-    uninstall) uninstall_audio ;;
-esac
+    case "$action" in
+        install) install_audio ;;
+        check) check_audio_status ;;
+        uninstall) uninstall_audio ;;
+    esac
+}
+
+# Allow the hermetic tests to source the functions without running the CLI.
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+    main "$@"
+fi
