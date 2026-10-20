@@ -5,12 +5,14 @@ on:
     branches: [ main, master ]
     paths:
       - 'audio/**'
+      - 'lib/**'
       - 'tests/**'
       - '.github/workflows/audio-ci.yml'
   pull_request:
     branches: [ main, master ]
     paths:
       - 'audio/**'
+      - 'lib/**'
       - 'tests/**'
       - '.github/workflows/audio-ci.yml'
   workflow_dispatch:
@@ -45,3 +47,6 @@ jobs:
 
       - name: UCM PCM Index Patch Regression (sandboxed, no root)
         run: bash tests/audio-ucm-pcm-index-test.sh
+
+      - name: Diagnose Audio Behavior (sandboxed, no root)
+        run: bash tests/diagnose-audio-test.sh

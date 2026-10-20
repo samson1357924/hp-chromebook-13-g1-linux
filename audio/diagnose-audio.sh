@@ -6,6 +6,11 @@ OUTPUT=""
 while [ $# -gt 0 ]; do
     case "$1" in
         -o | --output)
+            if [ $# -lt 2 ] || [ -z "${2:-}" ]; then
+                echo "Usage: $0 [-o FILE]" >&2
+                echo "  -o FILE  Also tee report to FILE" >&2
+                exit 2
+            fi
             OUTPUT="$2"
             shift 2
             ;;
@@ -21,9 +26,26 @@ while [ $# -gt 0 ]; do
     esac
 done
 if [ -n "$OUTPUT" ]; then
+    if ! touch "$OUTPUT" 2> /dev/null; then
+        echo "Cannot write report file: $OUTPUT" >&2
+        exit 1
+    fi
     echo "NOTE: report may contain hardware IDs; review before sharing." >&2
     exec > >(tee -a "$OUTPUT") 2>&1
 fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+# Reuse the installer's kernel-numbering helper so diagnostics and install
+# agree on whether ,1/,2 or ,0 is correct.
+# shellcheck source=../audio/install-audio.sh
+source "$REPO_ROOT/audio/install-audio.sh"
+
+UCM_DST="${CROS_UCM_DIR:-/usr/share/alsa/ucm2}"
+AVS_OBSOLETE_PARAM="${CROS_AVS_OBSOLETE_PARAM_FILE:-$AVS_OBSOLETE_PARAM}"
+AVS_KERNEL_RELEASE="${CROS_AVS_KERNEL_RELEASE:-$AVS_KERNEL_RELEASE}"
+AVS_MODPROBE_DIR="${CROS_AVS_MODPROBE_DIR:-$AVS_MODPROBE_DIR}"
+AVS_CMDLINE_FILE="${CROS_AVS_CMDLINE_FILE:-$AVS_CMDLINE_FILE}"
 
 echo "==========================================================="
 echo "   HP Chromebook 13 G1 (Chell) AVS Audio Diagnostic        "
@@ -41,7 +63,12 @@ echo "Cmdline      : $(cat /proc/cmdline 2> /dev/null | cut -c1-200)"
 echo ""
 
 echo "--- [2/6] AVS Kernel Modules ---"
-lsmod | grep -E "snd_soc_avs|snd_sof" | sed 's/^/  /' || echo "  [WARN] No AVS/SOF modules found"
+mod_lines="$(lsmod 2> /dev/null | grep -E "snd_soc_avs|snd_sof" || true)"
+if [ -n "$mod_lines" ]; then
+    printf '%s\n' "$mod_lines" | sed 's/^/  /'
+else
+    echo "  [WARN] No AVS/SOF modules found"
+fi
 echo ""
 if [ -d /lib/firmware/intel/avs ]; then
     echo "AVS firmware dir: /lib/firmware/intel/avs/"
@@ -71,7 +98,6 @@ done
 echo ""
 
 echo "--- [4/6] UCM Status ---"
-UCM_DST="/usr/share/alsa/ucm2"
 for rel in \
     "conf.d/avs_ssm4567/AVS I2S SSM4567.conf" \
     "conf.d/avs_ssm4567/avs_ssm4567.conf" \
@@ -88,6 +114,8 @@ for rel in \
     fi
 done
 echo "  PCM index check:"
+pcm_mode="$(avs_numbering_mode)"
+echo "    AVS PCM numbering: $pcm_mode"
 for f in \
     "$UCM_DST/Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0-HiFi.conf" \
     "$UCM_DST/Intel/avs/avs_nau8825/avs_nau8825-HiFi.conf" \
@@ -95,14 +123,33 @@ for f in \
     "$UCM_DST/Intel/avs/avs_dmic/DMIC-2ch-HiFi.conf" \
     "$UCM_DST/Intel/avs/avs_dmic/DMIC-4ch-HiFi.conf"; do
     [ -f "$f" ] || continue
-    # Legacy templates ship ,1 (speaker/headset) or ,2 (DMIC); every AVS card
-    # exposes its FE PCM as device 0 on kernels >= 6.16. The boundary keeps
-    # multi-digit indices (,10/,12/,20) from matching.
-    if grep -qE 'hw:\$\{CardId\},[12]([^0-9]|$)' "$f" 2> /dev/null; then
-        pcm_idx="$(grep -oE 'hw:\$\{CardId\},[12]' "$f" | head -n 1 | sed 's/.*,//')"
-        echo "    [WARN] $f contains hw:\${CardId},$pcm_idx (expected hw:\${CardId},0)"
+    if [ ! -s "$f" ]; then
+        echo "    [WARN] $f is empty or truncated"
+        continue
+    fi
+    if ! grep -qE 'hw:\$\{CardId\},[0-9]+([^0-9]|$)' "$f" 2> /dev/null; then
+        if [ -s "$f" ] && grep -qE '^[[:space:]]*Include([.[:space:]]|$)' "$f" 2> /dev/null; then
+            echo "    [OK] $f (Include-only, no literal PCM index)"
+        else
+            echo "    [WARN] $f has no PCM index and is not a valid Include-only file"
+        fi
+        continue
+    fi
+    if [ "$pcm_mode" = "legacy" ]; then
+        if grep -qE 'hw:\$\{CardId\},0([^0-9]|$)' "$f" 2> /dev/null; then
+            echo "    [WARN] $f uses hw:\${CardId},0 but legacy AVS numbering needs ,1/,2"
+        elif grep -qE 'hw:\$\{CardId\},[12]([^0-9]|$)' "$f" 2> /dev/null; then
+            echo "    [OK] $f (legacy hw:\${CardId},1/,2)"
+        else
+            echo "    [WARN] $f has a PCM index but none is hw:\${CardId},1|,2"
+        fi
     else
-        echo "    [OK] $f (hw:\${CardId},0)"
+        if grep -qE 'hw:\$\{CardId\},[12]([^0-9]|$)' "$f" 2> /dev/null; then
+            pcm_idx="$(grep -oE 'hw:\$\{CardId\},[12]([^0-9]|$)' "$f" | head -n 1 | sed -E 's/.*,([12]).*/\1/')"
+            echo "    [WARN] $f contains hw:\${CardId},$pcm_idx (expected hw:\${CardId},0)"
+        else
+            echo "    [OK] $f (hw:\${CardId},0)"
+        fi
     fi
 done
 if command -v alsaucm > /dev/null 2>&1; then
@@ -133,9 +180,11 @@ echo ""
 
 echo "--- [6/6] PipeWire / WirePlumber ---"
 wp_status_out=""
+wp_names_out=""
 wp_audio_out=""
 if command -v wpctl > /dev/null 2>&1; then
     wp_status_out="$(wpctl status 2> /dev/null || true)"
+    wp_names_out="$(wpctl status -n 2> /dev/null || true)"
     if [ -n "$wp_status_out" ]; then
         wp_audio_out="$(printf '%s\n' "$wp_status_out" | sed -n '/^Audio/,/^Video/p')"
         if [ -n "$wp_audio_out" ]; then
@@ -151,11 +200,20 @@ fi
 # ports (pw-link) and an 'alsa_output...ssm4567...' node name, while a bare
 # ALSA device node is called 'alsa_card...' and must never satisfy the check.
 wp_sink="unknown"
+sink_section=""
 if [ -n "$wp_status_out" ]; then
-    if printf '%s\n' "$wp_audio_out" | sed -n '/Sinks:/,/Sources:/p' | grep -qi 'ssm4567'; then
+    if [ -n "$wp_names_out" ]; then
+        sink_section="$(printf '%s\n' "$wp_names_out" | sed -n '/Sinks:/,/Sources:/p')"
+    fi
+    if [ -z "$sink_section" ]; then
+        sink_section="$(printf '%s\n' "$wp_status_out" | sed -n '/Sinks:/,/Sources:/p')"
+    fi
+    if printf '%s\n' "$sink_section" | grep -qi 'ssm4567'; then
         wp_sink="ok"
-    else
+    elif [ -n "$sink_section" ]; then
         wp_sink="missing"
+    else
+        wp_sink="unknown"
     fi
 elif command -v wpctl > /dev/null 2>&1; then
     wp_sink="nosession"
@@ -184,6 +242,9 @@ case "$wp_sink" in
         ;;
     nosession)
         echo "  [WARN] Cannot list PipeWire sinks (PipeWire not running? under sudo, re-run as your desktop user)"
+        ;;
+    unknown)
+        echo "  [INFO] Cannot read the PipeWire Sinks section - check PipeWire/WirePlumber"
         ;;
     *)
         echo "  [INFO] wpctl, pw-link and pw-dump all unavailable - cannot verify the PipeWire speaker sink"
@@ -236,11 +297,14 @@ echo ""
 
 echo "--- Extra: dmesg (AVS) ---"
 if command -v dmesg > /dev/null 2>&1; then
-    if dmesg 2> /dev/null | grep -i -E "avs|ssm4567|nau8825" | tail -n 20 | sed 's/^/  /'; then
-        :
+    dmesg_lines="$(dmesg 2> /dev/null | grep -i -E "avs|ssm4567|nau8825" | tail -n 20 || true)"
+    if [ -n "$dmesg_lines" ]; then
+        printf '%s\n' "$dmesg_lines" | sed 's/^/  /'
     else
-        echo "  [INFO] dmesg restricted; try: sudo dmesg | grep -i avs"
-        sudo dmesg 2> /dev/null | grep -i -E "avs|ssm4567|nau8825" | tail -n 20 | sed 's/^/  /' || echo "  [INFO] No AVS dmesg lines"
+        echo "  [INFO] dmesg restricted or no AVS lines; try: sudo dmesg | grep -i avs"
+        if command -v sudo > /dev/null 2>&1; then
+            sudo dmesg 2> /dev/null | grep -i -E "avs|ssm4567|nau8825" | tail -n 20 | sed 's/^/  /' || echo "  [INFO] No AVS dmesg lines"
+        fi
     fi
 fi
 echo ""
