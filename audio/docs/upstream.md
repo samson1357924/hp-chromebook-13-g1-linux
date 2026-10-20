@@ -47,6 +47,7 @@ The repo's UCM patches must be reverted first - the restored old numbering expec
 Required `conf.d` entries (non-HP DMI): with `obsolete_card_names=1` the UCM lookup long name is the DMI-derived name (`Google-Chell-1.0` on this project's units), and the stock package ships no matching file - the Chell entries use the HP-derived name `Hewlett_Packard-Chell-1.0.conf`. The lookup entry points are therefore the installer's driver-name fallback symlinks, one per DMI-named card (SSM4567, NAU8825, DMIC); `--uninstall` removes the ones it created, so recreate any that are missing:
 
 ```bash
+sudo mkdir -p /usr/share/alsa/ucm2/conf.d/avs_ssm4567 /usr/share/alsa/ucm2/conf.d/avs_nau8825 /usr/share/alsa/ucm2/conf.d/avs_dmic
 sudo ln -sf ../../Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0.conf /usr/share/alsa/ucm2/conf.d/avs_ssm4567/avs_ssm4567.conf
 sudo ln -sf ../../Intel/avs/avs_nau8825/Hewlett_Packard-Chell-1.0.conf /usr/share/alsa/ucm2/conf.d/avs_nau8825/avs_nau8825.conf
 sudo ln -sf ../../Intel/avs/avs_dmic/DMIC-2ch.conf /usr/share/alsa/ucm2/conf.d/avs_dmic/avs_dmic.conf
@@ -61,7 +62,7 @@ Trade-offs:
 | Approach | Advantages | Drawbacks |
 |---|---|---|
 | Patched UCM (this repo) | Matches the upstream direction (new names, device `0`); no reboot needed; keeps the new topology expectations | Modifies distro files in place; `alsa-ucm-conf` updates overwrite the patches (re-run the installer) |
-| `obsolete_card_names=1` | No UCM file patching; survives `alsa-ucm-conf` updates | Deprecated kernel option ("obsolete"; upstream plans removal once the UCM PR lands); requires a reboot; conflicts with the repo's UCM patches (revert them first) |
+| `obsolete_card_names=1` | No UCM file patching; survives `alsa-ucm-conf` updates | Deprecated kernel option ("obsolete"; upstream has not announced a removal timeline); requires a reboot; conflicts with the repo's UCM patches (revert them first) |
 
 ## 5. Upstream History (for reference)
 

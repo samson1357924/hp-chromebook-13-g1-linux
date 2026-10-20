@@ -9,7 +9,7 @@ This device uses **Intel AVS** (`snd_soc_avs`), not SOF. See the [Audio README](
 - Cards (use ALSA IDs, card numbers are non-deterministic): `avs_ssm4567` (Speakers `hw:SSM4567`), `avs_nau8825` (Headphones `hw:NAU8825`), `avs_dmic` (Mic `hw:DMIC`), `avs_hdaudio` (HDMI `hw:HDMI`) — SSM4567/NAU8825/DMIC expose PCM device `0` only; `avs_hdaudio` keeps devices `0`-`2` (HDMI1-HDMI3).
 - UCM: the distro `alsa-ucm-conf` is patched in place by `audio/install-audio.sh` (`conf.d` fallback symlinks + PCM indices `,1`/`,2` -> `,0` + mixers); Chell never needs SOF UCM.
 - WirePlumber: `50-avs-chell.conf` sets Headphones 2000 > Speakers 1500 > HDMI 500 (HDMI priority tie fix).
-- Volume: the persistent knob is `wpctl set-volume @DEFAULT_AUDIO_SINK@` — on login WirePlumber restores its saved node volume (observed as low as `0.06`) and writes it to the `DSP Volume` mixer, overriding the installer value.
+- Volume: the persistent knob is `wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.5` — on login WirePlumber restores its saved node volume (observed as low as `0.06`) and writes it to the `DSP Volume` mixer, overriding the installer value.
 
 ## Kernel >= 6.16: Card Rename + PCM Renumbering (why the UCM broke)
 

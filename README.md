@@ -75,7 +75,7 @@ chmod +x setup.sh
 | Dry-run preview | `./setup.sh --all --dry-run` |
 | Uninstall & rollback | `./setup.sh --uninstall` |
 
-After install: `aplay -l` → `SSM4567 / NAU8825 / DMIC` (PCM device `0`), `wpctl status` → `* Built-in Speakers (SSM4567)` + `Internal Digital Mic (DMIC)`, `lsmod | grep i915` → bound, `cat /sys/kernel/debug/dri/1/i915_display_info | grep CDCLK` → `450000`.
+After install: `aplay -l` → `AVS I2S SSM4567` / `AVS I2S NAU8825` / `AVS HDMI` (PCM device `0`); `arecord -l` → `AVS DMIC` (PCM device `0`); `wpctl status` → `* Built-in Speakers (SSM4567)` + `Internal Digital Mic (DMIC)`; `lsmod | grep i915` → bound; `cat /sys/kernel/debug/dri/1/i915_display_info | grep CDCLK` → `450000`.
 
 ---
 

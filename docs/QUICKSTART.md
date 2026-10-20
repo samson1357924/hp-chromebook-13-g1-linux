@@ -31,5 +31,5 @@ chmod +x setup.sh
 ## 📝 After Install
 
 1. **Graphics**: If you installed via safe graphics, run `./scripts/fix-graphics.sh` then `sudo reboot` to enable `i915` acceleration (verify: `lsmod | grep i915`).
-2. **Audio**: `aplay -l` should show `SSM4567` + `NAU8825` + `DMIC` (PCM device `0`); `wpctl status` should list `* Built-in Speakers (SSM4567)` + `Internal Digital Mic (DMIC)` — only `Dummy Output` means the UCM PCM index fix is missing (run `sudo ./audio/install-audio.sh --install`).
+2. **Audio**: `aplay -l` should show `AVS I2S SSM4567` / `AVS I2S NAU8825` / `AVS HDMI` (PCM device `0`), `arecord -l` should show `AVS DMIC` (PCM device `0`); `wpctl status` should list `* Built-in Speakers (SSM4567)` + `Internal Digital Mic (DMIC)` — only `Dummy Output` means the UCM PCM index fix is missing (run `sudo ./audio/install-audio.sh --install`).
 3. **Keyboard**: Top-row maps to F1-F10/media via `hwdb`.

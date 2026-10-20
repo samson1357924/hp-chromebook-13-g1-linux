@@ -9,12 +9,13 @@ max_retries = 5
 retry_wait_time = 5
 timeout = 20
 max_concurrency = 16
-exclude_all_private = true
+exclude_path = ["docs/404.md", "docs/zh-TW/404.md"]
 exclude = [
     'site/.*',
     '\.cache/.*',
     'overrides/.*',
-    'file://.*hp-chromebook-13-g1-linux',
+    # 'file://.*hp-chromebook-13-g1-linux' removed: local file links are now
+# checked. Only the generated 404 pages are excluded via exclude_path above.
     'hp-pro-c640.*',
     'hp-pro-c640-chromebook-linux.*',
     '^/hp-chromebook-13-g1-linux/.*',

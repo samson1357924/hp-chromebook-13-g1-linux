@@ -1,7 +1,7 @@
 name: Hardware Issue Report
 description: Report a hardware or driver issue on HP Chromebook 13 G1
 title: "[Bug]: "
-labels: ["bug", "hardware"]
+labels: ["bug"]
 body:
   - type: markdown
     attributes:

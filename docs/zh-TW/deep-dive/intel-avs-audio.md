@@ -9,7 +9,7 @@
 - 音訊卡（請用 ALSA ID，卡號為動態）：`avs_ssm4567`（喇叭 `hw:SSM4567`）、`avs_nau8825`（耳機 `hw:NAU8825`）、`avs_dmic`（麥克風 `hw:DMIC`）、`avs_hdaudio`（HDMI `hw:HDMI`）——SSM4567／NAU8825／DMIC 只暴露 PCM device `0`；`avs_hdaudio` 仍保有 device `0`-`2`（HDMI1-HDMI3）。
 - UCM：發行版 `alsa-ucm-conf` 由 `audio/install-audio.sh` 就地修補（`conf.d` fallback symlink + PCM 索引 `,1`／`,2` -> `,0` + mixer）；Chell 永遠不需要 SOF UCM。
 - WirePlumber：`50-avs-chell.conf` 設定耳機 2000 > 喇叭 1500 > HDMI 500（修復 HDMI 優先權搶佔）。
-- 音量：持久旋鈕是 `wpctl set-volume @DEFAULT_AUDIO_SINK@`——登入時 WirePlumber 會還原它儲存的節點音量（實測低至 `0.06`）並寫回 `DSP Volume`，覆蓋安裝器設定。
+- 音量：持久旋鈕是 `wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.5`——登入時 WirePlumber 會還原它儲存的節點音量（實測低至 `0.06`）並寫回 `DSP Volume`，覆蓋安裝器設定。
 
 ## kernel >= 6.16：音訊卡更名與 PCM 重新編號（UCM 為何失效）
 

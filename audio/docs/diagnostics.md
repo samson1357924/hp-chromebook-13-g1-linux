@@ -81,7 +81,7 @@ grep -RE 'hw:\$\{CardId\},[12]([^0-9]|$)' /usr/share/alsa/ucm2/Intel/avs/avs_{ss
 amixer -cSSM4567 cget name='DSP Volume'   # installer sets ~1500000000; range 0..2147483647 (small values like 80 are still mute)
 wpctl get-volume @DEFAULT_AUDIO_SINK@     # WirePlumber node volume; below 0.2 is suspicious
 wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.5 # persistent correction
-amixer -cNAU8825 cget name='Headphone Jack'   # jack detection
+amixer -cNAU8825 cget iface=CARD,name='Headphone Jack'   # jack detection
 ```
 
 Note: on login WirePlumber restores its saved node volume and writes it to `DSP Volume`, overriding the installer's mixer value (observed 0.06 = 6%, mixer about -24 dB).
@@ -94,7 +94,7 @@ speaker-test -D plughw:NAU8825,0 -c2 -l1        # headphones
 arecord -D plughw:DMIC,0 -d2 -f S16_LE -r48000 -c2 /tmp/mic.wav && aplay -D plughw:SSM4567,0 /tmp/mic.wav
 ```
 
-On kernel >= 6.16, `hw:SSM4567,1` / `hw:DMIC,2` do not exist - an ENOENT here is the expected failure signature, not broken hardware. Mono WAVs via `hw` also fail (`Channels count non available`); use `plughw` or `-c2`.
+On kernel >= 6.16, `hw:SSM4567,1` / `hw:DMIC,2` do not exist — an ENOENT here happens on both fixed and unfixed systems (kernel >= 6.16 exposes only device 0), so it is **not** the discriminator; use `wpctl status` and `grep hw:\\${CardId},` in the UCM instead. Mono WAVs via `hw` also fail (`Channels count non available`); use `plughw` or `-c2`.
 
 ### 2.6 `dmesg` (AVS)
 
@@ -109,7 +109,7 @@ sudo dmesg | grep -i -E "avs|ssm4567|nau8825"
 * [ ] `wpctl status` Sinks: only `Dummy Output` (no `Built-in Speakers (SSM4567)`)
 * [ ] `pw-dump` AVS cards offer no `HiFi` profile (only `{off, pro-audio}`, active `off`)
 * [ ] UCM HiFi files contain a stale `hw:${CardId},1` or `,2` index (automated by `diagnose-audio.sh`)
-* [ ] `aplay -D hw:SSM4567,1 ...` fails ENOENT while `-D hw:SSM4567,0` streams fine
+* [ ] `aplay -D hw:SSM4567,1 ...` fails ENOENT on both fixed and unfixed systems (not the discriminator); `wpctl status` shows only `Dummy Output`; `pw-dump` cards all `off`
 * [ ] `alsaucm -c hw:SSM4567 dump text` reports `-2` (missing `conf.d` fallbacks - older failure mode; parsing can also succeed while the profile still fails)
 * [ ] `amixer -cSSM4567 cget name='DSP Volume'` shows `values=0`, or `wpctl get-volume @DEFAULT_AUDIO_SINK@` is below 0.2
 * [ ] `/etc/wireplumber/wireplumber.conf.d/50-avs-chell.conf` missing
