@@ -475,6 +475,44 @@ assert_eq "new" "$(AVS_KERNEL_RELEASE=7.0.0 avs_numbering_mode)" "cmdline should
 rm -f "$AVS_MODPROBE_DIR/avs.conf"
 
 # ---------------------------------------------------------------------------
+# 9. Package upgrade refresh: rollback restores the upgraded file, not v1
+# ---------------------------------------------------------------------------
+setup_tree
+DRY_RUN=0 assert_success fix_ucm_pcm_index
+upgraded="$UCM_DST/Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0-HiFi.conf"
+printf 'PlaybackPCM "hw:${CardId},1"\nUpgraded stock content\n' > "$upgraded"
+DRY_RUN=0 assert_success fix_ucm_pcm_index
+assert_eq "5" "$(find "$SANDBOX/backups" -type f | wc -l)" "package upgrade should create one refreshed backup"
+set +e
+rollback_component "audio" > "$SANDBOX/rollback-upgrade.out" 2>&1
+upgrade_rc=$?
+set -e
+assert_eq "0" "$upgrade_rc" "rollback after package upgrade should succeed"
+assert_contains "Upgraded stock content" "$upgraded" "rollback should restore the upgraded stock file"
+
+# ---------------------------------------------------------------------------
+# 10. Fallback symlink refresh: a package-provided replacement is backed up
+# ---------------------------------------------------------------------------
+setup_tree
+mkdir -p "$UCM_DST/Intel/avs/avs_ssm4567" "$UCM_DST/Intel/avs/avs_nau8825" "$UCM_DST/Intel/avs/avs_dmic"
+printf 'src\n' > "$UCM_DST/Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0.conf"
+printf 'src\n' > "$UCM_DST/Intel/avs/avs_nau8825/Hewlett_Packard-Chell-1.0.conf"
+printf 'src\n' > "$UCM_DST/Intel/avs/avs_dmic/DMIC-2ch.conf"
+DRY_RUN=0 assert_success fix_ucm_fallbacks
+replaced="$UCM_DST/conf.d/avs_ssm4567/AVS I2S SSM4567.conf"
+rm -f "$replaced"
+printf 'PACKAGE PROVIDED FILE\n' > "$replaced"
+DRY_RUN=0 assert_success fix_ucm_fallbacks
+assert_eq "src" "$(cat "$replaced")" "fallback refresh should relink to the source"
+if [ -L "$replaced" ]; then ok; else fail "fallback refresh should replace the package file with a symlink"; fi
+set +e
+rollback_component "audio" > "$SANDBOX/rollback-fallback.out" 2>&1
+fallback_rc=$?
+set -e
+assert_eq "0" "$fallback_rc" "fallback rollback should succeed"
+assert_contains "PACKAGE PROVIDED FILE" "$replaced" "fallback rollback should restore the package-provided file"
+
+# ---------------------------------------------------------------------------
 # 7. Uninstall without a manifest is an idempotent no-op (dry-run and real)
 # ---------------------------------------------------------------------------
 rm -f "$SANDBOX/manifest/install-manifest.json"

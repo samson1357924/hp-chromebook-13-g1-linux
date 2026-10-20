@@ -407,10 +407,20 @@ fix_ucm_fallbacks() {
             log_warn "  Skipping $rel: source $src_abs not found in distro package"
             continue
         fi
-        if ! backup_file_manifest_aware "$dst" "audio"; then
-            log_error "  Failed to back up $dst; not overwriting it"
-            fail=1
-            continue
+        if [ -L "$dst" ] && [ "$(readlink "$dst" 2> /dev/null || true)" = "$src" ]; then
+            if ! backup_file_manifest_aware "$dst" "audio"; then
+                log_error "  Failed to back up $dst; not overwriting it"
+                fail=1
+                continue
+            fi
+        else
+            # Package or user replaced our symlink/file since install:
+            # refresh the backup so rollback restores the current file.
+            if ! backup_file_manifest_aware "$dst" "audio" 1; then
+                log_error "  Failed to back up $dst; not overwriting it"
+                fail=1
+                continue
+            fi
         fi
         if [ "${DRY_RUN:-0}" = "1" ]; then
             log_dryrun "ln -sf $src -> $dst"
@@ -574,7 +584,7 @@ fix_ucm_pcm_index() {
         fi
         # Boundary required: ,10/,12/,20 are multi-digit indices, not ,1/,2.
         if grep -qE "$UCM_STALE_INDEX_RE" "$f" 2> /dev/null; then
-            if ! backup_file_manifest_aware "$f" "audio"; then
+            if ! backup_file_manifest_aware "$f" "audio" 1; then
                 log_error "  Failed to back up $f; not modifying it"
                 fail=1
                 continue

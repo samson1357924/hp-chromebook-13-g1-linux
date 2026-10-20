@@ -29,19 +29,26 @@ sys.exit(0 if any(r.get("target") == t for r in d.get("records", [])) else 1)
 }
 
 backup_file_manifest_aware() {
-    # $1=target $2=component
+    # $1=target $2=component [$3=force refresh: 1 backs up even if tracked]
     # On re-install of an already-tracked target, keep the ORIGINAL backup
     # (first backup) instead of overwriting it with our custom version, so
-    # rollback can always restore the pre-customization file.
-    local target="$1" component="$2"
-    if manifest_has_target "$target"; then
+    # rollback can always restore the pre-customization file. Force refresh is
+    # used when the target has reverted to a package-provided file (e.g. after
+    # an alsa-ucm-conf upgrade) so rollback restores the upgraded file.
+    local target="$1" component="$2" force="${3:-0}"
+    local existed=0
+    if [ -e "$target" ] || [ -L "$target" ]; then
+        existed=1
+    fi
+
+    if [ "$force" != "1" ] && manifest_has_target "$target"; then
         log_info "Reinstall: keeping original backup for $target"
         return 0
     fi
-    local existed=0
-    [ -e "$target" ] || [ -L "$target" ] && existed=1
+
+    BACKUP_LAST_PATH=""
     backup_file "$target"
-    manifest_add_entry "$target" "$component" "$existed"
+    manifest_add_entry "$target" "$component" "$existed" "${BACKUP_LAST_PATH:-}"
 }
 
 backup_meson_install_plan() {
@@ -221,6 +228,10 @@ backup_file() {
     local target="$1"
     [ -z "$target" ] && return 0
 
+    # Track the path of the backup we create so manifest_add_entry can record
+    # it; without this, rollback falls back to the oldest glob match.
+    BACKUP_LAST_PATH=""
+
     if [ "${DRY_RUN:-0}" = "1" ]; then
         log_dryrun "Would backup file: $target (if exists)"
         return 0
@@ -233,6 +244,7 @@ backup_file() {
         sudo mkdir -p "$(dirname "$backup_path")"
         sudo cp -a "$target" "$backup_path"
         log_info "Backed up existing file: $target -> $backup_path"
+        BACKUP_LAST_PATH="$backup_path"
     fi
 }
 
@@ -240,6 +252,7 @@ manifest_add_entry() {
     local target="$1"
     local component="$2"
     local was_existing="$3" # 1 = yes, 0 = created new
+    local backup_path="${4:-}"
 
     if [ "${DRY_RUN:-0}" = "1" ]; then
         log_dryrun "Would record in manifest: [$component] $target (existing=$was_existing)"
@@ -267,6 +280,7 @@ target = sys.argv[2]
 comp = sys.argv[3]
 existing = sys.argv[4] == "1"
 ts = sys.argv[5]
+bp = sys.argv[6] if len(sys.argv) > 6 else ""
 
 data = {"version":"2.0","records":[],"services":[],"groups":[]}
 if os.path.exists(manifest_path):
@@ -285,14 +299,15 @@ data["records"].append({
     "target": target,
     "component": comp,
     "was_existing": existing,
-    "installed_at": ts
+    "installed_at": ts,
+    "backup_path": bp
 })
 
 tmp_manifest = manifest_path + ".tmp"
 with open(tmp_manifest, "w") as f:
     json.dump(data, f, indent=2)
 os.replace(tmp_manifest, manifest_path)
-' "$MANIFEST_FILE" "$target" "$component" "$was_existing" "$timestamp"
+' "$MANIFEST_FILE" "$target" "$component" "$was_existing" "$timestamp" "${backup_path:-}"
 }
 
 rollback_component() {
@@ -388,13 +403,21 @@ for rec in records:
                 os.remove(target)
                 print(f"  [REMOVED FILE] {target}")
         else:
-            # Restore the OLDEST backup (matches[0]): for legacy manifests
-            # that may hold multiple backups of the same target, the first
-            # one is the pre-customization original.
-            pattern = os.path.join(backup_base, "*", target.lstrip("/"))
-            matches = sorted(glob.glob(pattern))
-            if matches:
-                original_backup = matches[0]
+            # Prefer the backup recorded at install time. This is the
+            # package-upgrade-safe path: after an alsa-ucm-conf upgrade the
+            # installer refreshes the record, and rollback restores the
+            # upgraded file instead of the first-install original. Fall back to
+            # the oldest glob match for legacy manifests without backup_path.
+            original_backup = None
+            recorded_backup = rec.get("backup_path")
+            if recorded_backup and os.path.lexists(recorded_backup):
+                original_backup = recorded_backup
+            else:
+                pattern = os.path.join(backup_base, "*", target.lstrip("/"))
+                matches = sorted(glob.glob(pattern))
+                if matches:
+                    original_backup = matches[0]
+            if original_backup:
                 print(f"  [RESTORING PREVIOUS BACKUP] {original_backup} -> {target}")
                 if os.path.lexists(target):
                     if os.path.islink(target) or os.path.isfile(target):
