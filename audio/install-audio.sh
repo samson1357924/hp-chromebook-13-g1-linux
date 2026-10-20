@@ -442,8 +442,12 @@ fix_ucm_fallbacks() {
         "Intel/avs/avs_nau8825/Hewlett_Packard-Chell-1.0.conf" \
         "Intel/avs/avs_dmic/DMIC-2ch.conf"; do
         if [ ! -f "$UCM_DST/$required" ]; then
-            log_error "  Required UCM source missing: $UCM_DST/$required"
-            fail=1
+            if [ "${DRY_RUN:-0}" = "1" ]; then
+                log_warn "  Required UCM source missing (dry-run): $UCM_DST/$required"
+            else
+                log_error "  Required UCM source missing: $UCM_DST/$required"
+                fail=1
+            fi
         fi
     done
     return "$fail"
@@ -523,17 +527,17 @@ fix_ucm_pcm_index() {
         while IFS= read -r f; do
             if [ ! -f "$f" ]; then
                 log_warn "  Missing UCM file: $f"
-                fail=1
+                [ "${DRY_RUN:-0}" != "1" ] && fail=1
                 continue
             fi
             if [ ! -r "$f" ]; then
                 log_warn "  Cannot read UCM file: $f"
-                fail=1
+                [ "${DRY_RUN:-0}" != "1" ] && fail=1
                 continue
             fi
             if [ ! -s "$f" ]; then
                 log_warn "  Empty UCM file: $f"
-                fail=1
+                [ "${DRY_RUN:-0}" != "1" ] && fail=1
                 continue
             fi
             if ! grep -qE 'hw:\$\{CardId\},[0-9]+([^0-9]|$)' "$f" 2> /dev/null; then
@@ -541,14 +545,14 @@ fix_ucm_pcm_index() {
                     log_info "  Include-only UCM file (no rewrite): $f"
                 else
                     log_warn "  $f has no PCM index and is not a valid Include-only file"
-                    fail=1
+                    [ "${DRY_RUN:-0}" != "1" ] && fail=1
                 fi
                 continue
             fi
             if grep -qE "$UCM_ZERO_INDEX_RE" "$f" 2> /dev/null; then
                 log_warn "  $f is patched to hw:\${CardId},0 but legacy numbering is active"
                 log_warn "  Reinstall alsa-ucm-conf (or disable obsolete_card_names) before using this installer"
-                fail=1
+                [ "${DRY_RUN:-0}" != "1" ] && fail=1
             elif grep -qE "$UCM_STALE_INDEX_RE" "$f" 2> /dev/null; then
                 log_success "  Legacy PCM index OK: $f"
             else
@@ -562,17 +566,17 @@ fix_ucm_pcm_index() {
     while IFS= read -r f; do
         if [ ! -f "$f" ]; then
             log_warn "  Missing UCM file: $f"
-            fail=1
+            [ "${DRY_RUN:-0}" != "1" ] && fail=1
             continue
         fi
         if [ ! -r "$f" ]; then
             log_warn "  Cannot read UCM file: $f"
-            fail=1
+            [ "${DRY_RUN:-0}" != "1" ] && fail=1
             continue
         fi
         if [ ! -s "$f" ]; then
             log_warn "  Empty UCM file: $f"
-            fail=1
+            [ "${DRY_RUN:-0}" != "1" ] && fail=1
             continue
         fi
         if ! grep -qE 'hw:\$\{CardId\},[0-9]+([^0-9]|$)' "$f" 2> /dev/null; then
@@ -580,7 +584,7 @@ fix_ucm_pcm_index() {
                 log_info "  Include-only UCM file (no rewrite): $f"
             else
                 log_warn "  $f has no PCM index and is not a valid Include-only file"
-                fail=1
+                [ "${DRY_RUN:-0}" != "1" ] && fail=1
             fi
             continue
         fi
@@ -605,7 +609,7 @@ fix_ucm_pcm_index() {
             log_info "  PCM index already correct: $f"
         else
             log_warn "  $f has a PCM index but none is hw:\${CardId},0"
-            fail=1
+            [ "${DRY_RUN:-0}" != "1" ] && fail=1
         fi
     done < <(ucm_pcm_files)
     return "$fail"
