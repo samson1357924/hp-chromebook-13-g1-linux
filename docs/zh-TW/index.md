@@ -40,7 +40,7 @@
 | 硬體組件 | 運作狀態 | 驅動 / 解決方案 | 說明與支援度 |
 | :--- | :---: | :--- | :--- |
 | **指紋辨識** | ❌ **無硬體** | — | 本機無指紋硬體（Chell / Lars 無 `18d1:5002` FPMCU）— 見 [COMPATIBILITY.md](COMPATIBILITY.md)。 |
-| **立體聲喇叭 & 麥克風** | 🟢 **喇叭與麥克風正常** | Intel AVS + ALSA UCM2 / PipeWire | 喇叭 (SSM4567 hw4,0)、耳機 (NAU8825 hw3,0)、DMIC hw0,0 分流正常。**耳機插拔自動切換未納入證據** — 見 [verification.md](verification.md)。 |
+| **立體聲喇叭 & 麥克風** | 🟢 **喇叭與麥克風正常** | Intel AVS + ALSA UCM2 / PipeWire | 喇叭 (`hw:SSM4567`)、耳機 (`hw:NAU8825`)、DMIC (`hw:DMIC`) 分流正常（卡號為動態，請用 ALSA ID）。**耳機插拔自動切換未納入證據** — 見 [verification.md](verification.md)。 |
 | ** Wi-Fi 5 & 藍牙 5.0** | ⚠️ **驅動已綁定** | Intel 7265 (`iwlwifi` / `btusb`) | 驅動開箱即綁定；**WPA3/吞吐量尚未量測**（見 [verification.md](verification.md)）。 |
 | **觸控螢幕 & 觸控板** | ⚠️ **驅動已綁定** | `i2c_hid` / `elan_i2c` | 模組存在；**手勢/防掌觸未納入證據**（見 [verification.md](verification.md)）。 |
 | **Intel UHD 顯示與硬解** | 🟢 **已驗證 (2026-08-29)** | `i915` (`psr=0 fbc=0 dc=0`) | `i915` 已綁定 `card1`、`Mesa HD 515` `direct rendering: Yes`、FIFO 近零（近 3 次啟動 0 次，9 boots 內偶發單次）、CDCLK 450MHz — 見 [verification.md](verification.md)。 |
@@ -134,7 +134,7 @@ chmod +x setup.sh
 
 Skylake AVS (`avs_ssm4567` / `avs_nau8825` / `avs_dmic`) 經 ALSA UCM2：
 
-- 喇叭 PCM 0 (`avs_ssm4567`)、耳機 PCM 0 (`avs_nau8825`) 自動切換、DMIC PCM 0 分流
+- 喇叭 PCM 0 (`avs_ssm4567`)、耳機 PCM 0 (`avs_nau8825`，插拔切換未完全驗證)、DMIC PCM 0 分流
 - WirePlumber 優先權 2000/1500/500 修復 HDMI 搶佔 — 見 [AVS 音訊深度解析](deep-dive/intel-avs-audio.md)
 
 ### ⌨️ 鍵盤 (`keyboard/`)

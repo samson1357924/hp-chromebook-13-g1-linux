@@ -41,24 +41,43 @@
 
 ## 🔊 Audio (AVS SSM4567 / NAU8825 / DMIC)
 
-### 4. No sound / default routed to HDMI (common on Chell AVS)
+### 4. No sound — only `Dummy Output` in `wpctl status` (kernel >= 6.16 UCM PCM index mismatch)
 
-* **Check**: `aplay -l` should show `SSM4567` (speakers), `NAU8825` (headset), `DMIC`; `*` in `wpctl status` should be `Built-in Speakers (SSM4567)`, not HDMI.
-* **Root cause**: see [audio/docs/root-cause.md](https://github.com/samson1357924/hp-chromebook-13-g1-linux/blob/main/audio/docs/root-cause.md) triple — HDMI steals `default`, missing UCM fallback (`alsaucm -c hw:SSM4567 dump text` fails `-2`), `DSP Volume=0` (range `0..2147483647`, `120` still mutes).
+* **Check**: `wpctl status` Sinks shows only `Dummy Output` instead of `* Built-in Speakers (SSM4567)`; `pw-dump` shows every AVS card with profiles `{off, pro-audio}` and active `off`; `aplay -D hw:SSM4567,1 ...` fails with ENOENT (this ENOENT is expected on both fixed and unfixed systems because kernel >= 6.16 exposes only device `0`, so it is not the discriminator — check `wpctl status` and `grep hw:\\${CardId},` in the UCM instead). Kernel >= 6.16 exposes SSM4567/NAU8825/DMIC as PCM device `0` only; the HDMI card (`avs_hdaudio`) keeps devices `0`-`2` (HDMI1-HDMI3).
+* **Root cause**: kernel >= 6.16 renamed the AVS cards (`AVS I2S SSM4567`, `AVS I2S NAU8825`, `AVS DMIC`, `AVS HDMI`) and renumbered the front-end PCMs; the distro UCM still references `hw:${CardId},1` (SSM4567/NAU8825) and `,2` (DMIC), so PipeWire's ACP backend cannot open the PCM, no HiFi profile is built, all cards stay on profile `off`, no hardware sink exists and PipeWire falls back to the silent `Dummy Output` — apps "play" and exit 0. Full chain: [audio/docs/root-cause.md](https://github.com/samson1357924/hp-chromebook-13-g1-linux/blob/main/audio/docs/root-cause.md).
+  * `alsaucm -c hw:SSM4567 dump text` can exit 0 and print `Verb.HiFi` while the profile still fails — parsing OK is **not** proof the PCM opens.
+  * Secondary: HDMI vs speakers priority tie, fixed by `50-avs-chell.conf` (speakers 1500 > HDMI 500; mainly matters when a display with audio is attached).
 * **Solution**:
 
   ```bash
-  sudo ./audio/install-audio.sh --install
+  sudo ./audio/install-audio.sh --install   # conf.d symlinks + ,1/,2 -> ,0 + mixers + WirePlumber
   ./audio/diagnose-audio.sh
+  wpctl status                              # expect Built-in Speakers (SSM4567) + Internal Digital Mic (DMIC)
   speaker-test -D plughw:SSM4567,0 -c2 -l1
   ```
 
+  > **After `alsa-ucm-conf` package updates, re-run the installer**: upgrades overwrite the patched UCM HiFi files and the stale `,1`/`,2` indices come back.
   Chell uses Intel AVS (`snd_soc_avs`) and needs no SOF UCM (unlike c640 `sof-rt5682`).
 
-### 4.1 Speaker volume extremely low (`DSP Volume=0`)
+### 4.1 Speaker volume extremely low / silent after login
 
-* **Root cause**: after reinstall/reboot `Left/Right Master` resets to `15/255 (-65dB)` and `DSP Volume` to `0` — effective mute with switches `[on]`.
-* **Solution**: re-run `sudo ./audio/install-audio.sh --install` (sets `Left/Right Master 191`, `DSP 1500000000`, `alsactl store`), then `wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.9`.
+* **Root cause**: WirePlumber restores its saved node volume on login (observed as low as `0.06`) and writes it to the `DSP Volume` mixer, overriding the installer value; after reinstall/reboot `Left/Right Master` also resets to `15/255 (-65dB)` and `DSP Volume` to `0` — effective mute with switches `[on]`.
+* **Check**: `wpctl get-volume @DEFAULT_AUDIO_SINK@` (the diagnose script warns below `0.2`).
+* **Solution**: `wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.5` is the persistent knob; re-run `sudo ./audio/install-audio.sh --install` if the mixer itself was reset (sets `Left/Right Master 191`, `DSP 1500000000`, `alsactl store`).
+
+### 4.2 Internal microphone not working (DMIC)
+
+* **Root cause**: same UCM PCM index mismatch — DMIC capture references `hw:${CardId},2` while kernel >= 6.16 exposes device `0`; the installer rewrites `,2` -> `,0` as well.
+* **Check / solution**:
+
+  ```bash
+  sudo ./audio/install-audio.sh --install   # also fixes the DMIC CapturePCM index
+  wpctl status                              # source: Internal Digital Mic (DMIC)
+  arecord -D plughw:DMIC,0 -d2 -f S16_LE -r48000 -c2 /tmp/mic.wav
+  aplay -D plughw:SSM4567,0 /tmp/mic.wav    # or inspect the WAV on another device
+  ```
+
+  The DMIC NHLT warning `Endpoint format configuration not found` in `dmesg` is harmless.
 
 ### 5. Headset mic not working
 

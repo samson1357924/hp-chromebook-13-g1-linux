@@ -15,9 +15,9 @@
 | **處理器** | Intel Core m7-6Y75（另有 m3-6Y30/m5-6Y57）Skylake-Y 4.5W | `intel_pstate` | 🟢 **正常** | 4 threads, 1.2-3.1GHz, `lscpu` 已驗證 |
 | **GPU / 顯示** | Intel HD Graphics 515 (GT2, 24EU) [8086:191e] | `i915` | 🟢 **正常 (2026-08-29)** | `i915` 綁定 `card1`，`Mesa HD 515` `direct rendering: Yes`，`3200x1800@60 361.31MHz` CDCLK 450MHz FIFO 近零，`i915.enable_psr=0 fbc=0 dc=0`（經 `scripts/fix-graphics.sh`；近 3 次啟動 0 次，9 boots 內偶發單次不再連發）。DRM 物理 3200x1800，`xrandr` 3840x2160 為 XWayland 縮放。 |
 | **鍵盤背光** | ChromeOS EC `chromeos::kbd_backlight` max 100 | `cros_kbd_led_backlight` / `leds_cros_ec` + `61-chromeos-kbd-backlight.rules` | 🟢 **正常 (2026-08-29)** | `/sys/class/leds/chromeos::kbd_backlight` + GNOME `Power.Keyboard` `StepUp/Down/Toggle`（+5/級）+ `c640-ec-control kblight [PCT]` + `systemd-backlight` 已驗證；uaccess/plugdev 已部署。 |
-| **立體聲喇叭** | SSM4567 I2S Amp (AVS) | `avs_ssm4567` | 🟢 **正常** | `aplay -l` Card SSM4567, PipeWire sink 正常 |
-| **3.5mm 耳機孔** | Nuvoton NAU8825 (I2C) | `avs_nau8825` | 🟢 **正常** | Card NAU8825, 耳機播放+錄音正常 |
-| **內建數位麥克風** | Digital Mic | `avs_dmic` | 🟢 **正常** | Card DMIC, `arecord -l` 正常 |
+| **立體聲喇叭** | SSM4567 I2S Amp (AVS) | `avs_ssm4567` | 🟢 **正常** | `hw:SSM4567,0`；PipeWire sink `Built-in Speakers (SSM4567)` 已驗證 2026-10-19（kernel >= 6.16 需經 `audio/install-audio.sh` 修補 UCM `,1`→`,0` PCM 索引；`alsa-ucm-conf` 更新後請重跑） |
+| **3.5mm 耳機孔** | Nuvoton NAU8825 (I2C) | `avs_nau8825` | 🟢 **正常** | `hw:NAU8825,0`，耳機播放+錄音正常（插拔自動切換未納入證據） |
+| **內建數位麥克風** | Digital Mic | `avs_dmic` | 🟢 **正常** | `hw:DMIC,0`；擷取已驗證 2026-10-19（`pw-record` 峰值 ≈ -15 dB、人聲；隨環境而異）；kernel >= 6.16 需 UCM `,2`→`,0` PCM 索引修正 |
 | **Wi-Fi** | Intel 7265 AC [8086:095a] | `iwlwifi` | ⚠️ **驅動已綁定** | `wlp1s0` 存在、已連線 — 吞吐量測試有限 |
 | **藍牙** | Intel 7265 BT `8087:0a2a` | `btusb` | ⚠️ **驅動已綁定** | 藍牙裝置存在 — 測試有限 |
 | **觸控板** | ELAN0000:00 I2C | `elan_i2c` / `i2c_hid` | ⚠️ **驅動已綁定** | `ELAN0000:00` + `Synopsys DesignWare` I2C 正常，手勢未驗證 |
@@ -34,6 +34,6 @@
 ## 🐧 核心與發行版需求
 
 * **核心**：`>=5.15` 建議 `>=6.5`（Ubuntu 26.04 `7.0.0-30` 已驗證 2026-08-29，`7.0.0-14` baseline 正常；i915 經 `psr=0 fbc=0 dc=0` 修正）
-* **音訊**：PipeWire 1.6.2 + AVS 驅動（`snd_soc_avs`）；無需 SOF UCM（與 c640 不同）
+* **音訊**：PipeWire 1.6.2 + AVS 驅動（`snd_soc_avs`）；無需 SOF UCM（與 c640 不同）。kernel >= 6.16 需 UCM PCM 索引修補（`audio/install-audio.sh`），`alsa-ucm-conf` 更新後請重跑
 * **已測試**：Ubuntu 26.04.1 LTS, kernel 7.0.0-30-generic（Wayland，`i915` + `kbd_backlight` 已驗證 2026-08-29），15Gi RAM
 * **復原映像**：`chell`（透過 `chromeos-recovery` 工具）

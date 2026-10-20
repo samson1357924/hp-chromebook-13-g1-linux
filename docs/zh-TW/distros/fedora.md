@@ -39,7 +39,7 @@ sudo dnf install -y gcc meson ninja-build pkgconf-pkg-config \
 
 ```bash
 sudo ./audio/install-audio.sh --install
-# 驗證 AVS 模組/韌體、UCM fallback、mixer 解 mute、WirePlumber 優先級。
+# 驗證 AVS 模組/韌體、UCM fallback 與 PCM 索引（,1／,2 -> ,0）、mixer 解 mute、WirePlumber 優先級。
 ./audio/diagnose-audio.sh
 ```
 
