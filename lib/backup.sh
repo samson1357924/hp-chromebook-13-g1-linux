@@ -47,7 +47,7 @@ backup_file_manifest_aware() {
     fi
 
     BACKUP_LAST_PATH=""
-    backup_file "$target"
+    backup_file "$target" || return 1
     manifest_add_entry "$target" "$component" "$existed" "${BACKUP_LAST_PATH:-}"
 }
 
@@ -101,7 +101,7 @@ manifest_add_service() {
     local enabled active
     systemctl is-enabled "$1" > /dev/null 2>&1 && enabled=1 || enabled=0
     systemctl is-active "$1" > /dev/null 2>&1 && active=1 || active=0
-    sudo mkdir -p "$MANIFEST_DIR"
+    sudo mkdir -p "$MANIFEST_DIR" || return 1
     sudo python3 -c '
 import json, sys, os
 mp, name, comp, enabled, active = sys.argv[1:6]
@@ -143,7 +143,7 @@ manifest_add_group() {
     if [ "$was_member" != "0" ] && [ "$was_member" != "1" ]; then
         id -nG "$2" 2> /dev/null | tr ' ' '\n' | grep -qx "$1" && was_member=1 || was_member=0
     fi
-    sudo mkdir -p "$MANIFEST_DIR"
+    sudo mkdir -p "$MANIFEST_DIR" || return 1
     sudo python3 -c '
 import json, sys, os
 mp, group, user, comp, member = sys.argv[1:6]
@@ -259,7 +259,7 @@ manifest_add_entry() {
         return 0
     fi
 
-    sudo mkdir -p "$MANIFEST_DIR"
+    sudo mkdir -p "$MANIFEST_DIR" || return 1
     local timestamp
     timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
 

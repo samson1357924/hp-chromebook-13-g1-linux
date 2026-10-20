@@ -40,7 +40,7 @@ jobs:
       - name: Bash Syntax Check (audio scripts)
         run: |
           set -euo pipefail
-          for f in audio/*.sh; do
+          for f in audio/*.sh lib/*.sh; do
             echo "bash -n $f"
             bash -n "$f"
           done

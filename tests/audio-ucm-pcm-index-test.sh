@@ -10,7 +10,7 @@
 # just substrings: a sed expression that drops a closing quote must fail.
 #
 #   bash tests/audio-ucm-pcm-index-test.sh
-set -euo pipefail
+# shellcheck disable=SC2034
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"

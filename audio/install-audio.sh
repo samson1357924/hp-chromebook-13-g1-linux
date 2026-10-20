@@ -13,6 +13,8 @@ source "$ROOT_DIR/lib/logger.sh"
 source "$ROOT_DIR/lib/distro.sh"
 # shellcheck source=lib/backup.sh
 source "$ROOT_DIR/lib/backup.sh"
+# MANIFEST_FILE and BACKUP_BASE_DIR are defined by lib/backup.sh.
+# shellcheck disable=SC2154
 # shellcheck source=lib/syscheck.sh
 source "$ROOT_DIR/lib/syscheck.sh" || true
 
@@ -648,18 +650,22 @@ fix_mixers() {
 deploy_wireplumber() {
     log_info "Deploying WirePlumber configs ..."
     for src in "$WP_SRC_AVS" "$WP_SRC_DISABLE"; do
-        [ -f "$src" ] || {
+        if [ ! -f "$src" ]; then
             log_warn "  Source missing: $src"
             continue
-        }
+        fi
         local dst
         dst="$WP_DST/$(basename "$src")"
-        backup_file_manifest_aware "$dst" "audio"
+        if ! backup_file_manifest_aware "$dst" "audio"; then
+            log_error "  Failed to back up $dst; not deploying it"
+            continue
+        fi
         if [ "${DRY_RUN:-0}" = "1" ]; then
             log_dryrun "install -D -m 0644 $src -> $dst"
-        else
-            sudo install -D -m 0644 "$src" "$dst"
+        elif sudo install -D -m 0644 "$src" "$dst"; then
             log_success "  Installed: $dst"
+        else
+            log_error "  Failed to install: $dst"
         fi
     done
     # Clean up legacy per-user WirePlumber override that shadows /etc (review finding)
