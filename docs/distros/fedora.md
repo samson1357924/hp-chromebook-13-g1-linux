@@ -36,7 +36,7 @@ sudo dnf install -y gcc meson ninja-build pkgconf-pkg-config \
 
 ```bash
 sudo ./audio/install-audio.sh --install
-# Verifies AVS modules/firmware, UCM fallbacks, mixer unmute, WirePlumber priority.
+# Verifies AVS modules/firmware, UCM fallbacks + PCM indices (,1/,2 -> ,0), mixer unmute, WirePlumber priority.
 ./audio/diagnose-audio.sh
 ```
 

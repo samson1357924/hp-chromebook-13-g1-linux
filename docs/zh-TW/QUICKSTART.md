@@ -46,6 +46,8 @@ speaker-test -c 2 -t wav
 wpctl status
 ```
 
+> 正常應見 `* Built-in Speakers (SSM4567)` 與 `Internal Digital Mic (DMIC)`；若只剩 `Dummy Output`，代表 UCM PCM 索引修補未生效，請重跑 `sudo ./audio/install-audio.sh --install`。
+
 ---
 
 ## 🔋 EC 與電池保護測試

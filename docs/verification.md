@@ -8,11 +8,16 @@
 | :--- | :--- |
 | **Device** | HP Chromebook 13 G1 (board `chell`, SKU 10467908) |
 | **Board** | `chell` 1.0, MrChromebox 2606.1, m7-6Y75 |
-| **OS** | Ubuntu 26.04.1 LTS, Wayland, kernel 7.0.0-30-generic (2026-08-29), 7.0.0-14-generic (2026-08-15 baseline) |
+| **OS** | Ubuntu 26.04.1 LTS, Wayland, kernel 7.0.0-38-generic (2026-10-19 audio), 7.0.0-30-generic (2026-08-29), 7.0.0-14-generic (2026-08-15 baseline) |
 | **Graphics** | `i915` active (CDCLK 450MHz, FIFO near-zero — 0 in last 3 boots, occasional single `FIFO`/`Atomic` in 9 boots), `nomodeset` removed via `scripts/fix-graphics.sh` |
-| **Audio** | AVS SSM4567/NAU8825/DMIC, PipeWire 1.6.2 |
+| **Audio** | AVS SSM4567/NAU8825/DMIC, PipeWire 1.6.2 / WirePlumber 0.5.13, alsa-ucm-conf 1.2.15.3-1ubuntu1.7 |
 | **Network** | 7265 AC, wlp1s0 |
 | **EC** | `/dev/cros_ec` + `/dev/cros_pd` present, `chell_v1.9.425` |
+
+## Verified (2026-10-19)
+
+* **Audio (speakers + microphone)** - after `audio/install-audio.sh` patched the distro UCM (PCM indices `,1`/`,2` -> `,0` for the kernel >= 6.16 AVS renumbering): `wpctl status` sink `* Built-in Speakers (SSM4567)` (vol 0.50) + source `* Internal Digital Mic (DMIC)` (vol 0.55); `pw-link -io` shows `avs_ssm4567 ...HiFi__Speaker__sink:playback_FL/FR` and `avs_dmic ...HiFi__Mic__source:capture_FL/FR`; `pw-dump` active profiles `HiFi: Speaker: sink` / `HiFi: Mic: source`; `aplay -D hw:SSM4567,1` fails ENOENT (this ENOENT happens on both fixed and unfixed systems because kernel >= 6.16 exposes only device 0, so it is not the discriminator; check `wpctl status` and the UCM `hw:\\${CardId},` lines instead); DMIC `pw-record` capture non-silent (`max_volume` ≈ -15 dB, 2026-10-19 session; ambient-dependent); speakers user-confirmed audible; `aplay -l` shows `AVS I2S SSM4567` / `AVS I2S NAU8825` / `AVS HDMI` (PCM device `0` only for the first two; HDMI keeps devices 0-2) and `arecord -l` shows `AVS DMIC` (PCM device `0`)
+* **Audio caveat** - `alsa-ucm-conf` package updates overwrite the patched HiFi files and reintroduce the `Dummy Output` failure; re-run `sudo ./audio/install-audio.sh --install`. Headphone-jack auto-switch not fully re-verified
 
 ## Verified (2026-08-29)
 

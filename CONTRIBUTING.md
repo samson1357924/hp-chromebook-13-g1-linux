@@ -42,15 +42,16 @@ Chell uses **Intel AVS** (`avs_ssm4567` Speakers, `avs_nau8825` Headphones, `avs
 
 #### 3.1 UCM source
 
-* Upstream AVS UCM is in `alsa-ucm-conf` (`Intel/avs/`). This repo **does not mirror** UCM; `audio/install-audio.sh` **patches** distro UCM: creates `conf.d/avs_*/AVS I2S *.conf` fallbacks and fixes `hw:${CardId},0` index.
+* Upstream AVS UCM is in `alsa-ucm-conf` (`Intel/avs/`). This repo **does not mirror** UCM; `audio/install-audio.sh` **patches** distro UCM: creates `conf.d/avs_*/AVS I2S *.conf` fallbacks and rewrites the stale `,1`/`,2` PCM indices to `,0` (kernel >= 6.16 exposes SSM4567/NAU8825/DMIC as device `0` only).
 * Rule: **upstream first, patch second**; when upstream adds fallbacks, the patch becomes no-op.
 
 #### 3.2 Verification flow
 
 ```bash
-sudo ./audio/install-audio.sh --install   # patches UCM, deploys 50-avs-chell.conf, unmutes DSP
-./audio/diagnose-audio.sh                  # 6-dimension check
-alsaucm -c hw:SSM4567 dump text | grep Verb.HiFi # should show HiFi
+sudo ./audio/install-audio.sh --install   # patches UCM (PCM indices), deploys 50-avs-chell.conf, mixers
+./audio/diagnose-audio.sh                 # automated checks (PCM index, Dummy Output, volume)
+alsaucm -c hw:SSM4567 dump text | grep Verb.HiFi # parses OK; NOT proof the PCM opens
+wpctl status                              # sink: Built-in Speakers (SSM4567)
 speaker-test -D plughw:SSM4567,0 -c2 -l1          # speakers (must be plughw + -c2)
 ```
 
@@ -64,6 +65,7 @@ See [audio/docs/diagnostics.md](audio/docs/diagnostics.md) for `wpctl`/`pw-dump`
 #### 3.4 Upstream
 
 * Track `alsa-ucm-conf` AVS updates and kernel `CONFIG_SND_SOC_INTEL_AVS`. See [audio/docs/upstream.md](audio/docs/upstream.md).
+* Re-run the installer after `alsa-ucm-conf` package updates: upgrades overwrite the patched HiFi files and reintroduce the failure.
 
 ### 4. Documentation & GitHub Pages
 

@@ -57,7 +57,15 @@ jobs:
                 echo "BROKEN: $f -> $t"
                 fail=1
               fi
-            done < <(grep -oE '\[[^]]*\]\([^)]*\)' "$f" | sed -E 's/^\[[^]]*\]\(([^)]*)\)/\1/')
+            done < <(
+              # Strip fenced code blocks and inline code spans before link
+              # extraction, so code examples like [...](...) cannot be
+              # mistaken for real links.
+              # shellcheck disable=SC2016  # literal backticks in the sed ERE
+              sed -E '/^[[:space:]]*(```|~~~)/,//d; s/`[^`]*`//g' "$f" \
+                | grep -oE '\[[^]]*\]\([^)]*\)' \
+                | sed -E 's/^\[[^]]*\]\(([^)]*)\)/\1/'
+            )
           done < <(find . -type f -name '*.md' -not -path './.git/*' \
             -not -path './site/*' -not -path './.cache/*' \
             -not -path './audio/upstream/*' -not -path './github_bot/prompts/*')

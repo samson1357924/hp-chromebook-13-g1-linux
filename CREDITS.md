@@ -47,7 +47,7 @@ in accordance with open-source licensing standards.
 
 ## 3. PipeWire ACP Phantom Jack Patch
 
-* **Target Directory**: `audio/patches/acp-phantom-jack.patch`
+* **Target Directory**: (no longer shipped in-tree; the fix is handled by PipeWire upstream / UCM fallback symlinks in `audio/install-audio.sh`)
 * **License**: [MIT License](LICENSES/MIT.txt)
 * **Upstream Target**: [PipeWire](https://gitlab.freedesktop.org/pipewire/pipewire) (`spa/plugins/alsa/acp/alsa-mixer.c`)
 * **Author / Submitter**: Samson `<samson1357924>`

@@ -22,11 +22,15 @@ If a claim cannot be grounded, write `NOT_ENOUGH_INFO`.
 
 ### 1. 🔇 Audio Subsystem (AVS SSM4567 + NAU8825 + DMIC + HDMI — 4 cards)
 - **Symptom: Dummy Output / No sound**:
-  - Check 1: Cards listed in `aplay -l`? Expected: 4 AVS cards — `avs_dmic`, `avs_nau8825`, `avs_ssm4567`, `avs_hdaudio` (e.g. `card 0: avs_dmic`, `card 3: avs_nau8825`, `card 4: avs_ssm4567` backed by `snd_soc_avs`).
-  - Check 2: Are all 12 UCM fallback symlinks present in `/usr/share/alsa/ucm2/conf.d/avs_*` → `Intel/avs/*`? Expected: `avs_ssm4567/AVS I2S SSM4567.conf`, `avs_ssm4567/avs_ssm4567.conf`, `avs_nau8825/AVS I2S NAU8825.conf`, `avs_nau8825/avs_nau8825.conf`, `avs_dmic/AVS DMIC.conf`, `avs_dmic/avs_dmic.conf`, `avs_hdaudio/AVS HDMI.conf`, `avs_hdaudio/avs_hdaudio.conf` plus `Hewlett_Packard-Chell-1.0.conf` per card (12 symlinks total).
-  - Check 3: UCM base is `Intel/avs/` (e.g. `Intel/avs/avs_ssm4567/Hewlett_Packard-Chell-1.0.conf`); fallback symlinks in `conf.d/` must point there. Missing fallback causes `alsaucm -c hw:NAU8825 dump text` / `hw:SSM4567 dump text` to fail with `-2` and PipeWire to fall back to Dummy Output.
-  - Check 4: Headphone plugged vs unplugged auto-switch behavior (NAU8825 vs SSM4567).
-  - Check 5: `dmesg | grep -i avs` showing firmware load error or `snd_soc_avs` probe failure?
+  - Check 0: Ask for `./audio/diagnose-audio.sh` output — it automates the checks below (exit 0 by design, even when degraded).
+  - Check 1: Cards listed in `aplay -l`? Expected: 4 AVS cards — `avs_dmic`, `avs_nau8825`, `avs_ssm4567`, `avs_hdaudio` backed by `snd_soc_avs`; on kernel >= 6.16 the long names are `AVS DMIC`, `AVS I2S NAU8825`, `AVS I2S SSM4567`, `AVS HDMI`. `AVS DMIC`/`AVS I2S NAU8825`/`AVS I2S SSM4567` expose PCM device `0` only, while `AVS HDMI` keeps devices 0-2 (HDMI1-HDMI3).
+  - Check 2 (primary): `wpctl status` shows only `Dummy Output` instead of `* Built-in Speakers (SSM4567)` -> the HiFi profile failed to build; `pw-dump` then shows every AVS card with profiles `{off, pro-audio}` and active profile `off`.
+  - Check 3 (primary): stale UCM PCM index — `grep -RE 'hw:\$\{CardId\},[12]([^0-9]|$)' /usr/share/alsa/ucm2/Intel/avs/avs_{ssm4567,nau8825,dmic}/*-HiFi.conf`; `aplay -D hw:SSM4567,1 ...` fails ENOENT while `-D hw:SSM4567,0` works; `arecord -D hw:DMIC,2 ...` fails ENOENT while `,0` captures. Caveat: `alsaucm -c hw:SSM4567 dump text` can exit 0 and print `Verb.HiFi` while the profile still fails — parsing is not proof.
+  - Check 4 (secondary): are all 12 UCM fallback symlinks present in `/usr/share/alsa/ucm2/conf.d/avs_*` -> `Intel/avs/*`? Missing symlinks make `alsaucm` fail `-2` (older failure mode).
+  - Check 5: default sink volume — `wpctl get-volume @DEFAULT_AUDIO_SINK@` below 0.2 means WirePlumber restored a very low node volume; it is not a missing sink.
+  - Check 6: Headphone plugged vs unplugged auto-switch behavior (NAU8825 vs SSM4567) — not fully verified.
+  - Check 7: `dmesg | grep -i avs` showing firmware load error or `snd_soc_avs` probe failure? (DMIC NHLT warnings `Endpoint format configuration not found` are harmless.)
+  - Note: `alsa-ucm-conf` package updates overwrite the patched UCM HiFi files and reintroduce the failure — re-run `sudo ./audio/install-audio.sh --install`.
 
 ### 2. 🖐️ Fingerprint Subsystem — NONE (Chell has no sensor; check /dev/cros_ec only)
 - **Symptom: Fingerprint sensor not detected (expected — Chell has no fingerprint hardware)**:
